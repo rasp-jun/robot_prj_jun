@@ -1,0 +1,9 @@
+# 빌드 결과물 (python web\build.py 로 재생성)
+web/conveyor_preview.html
+web/conveyor_local.html
+
+# Blender 백업
+*.blend1
+
+__pycache__/
+.omc/

@@ -1,0 +1,599 @@
+<title>EV 라인 컨베이어 스튜디오</title>
+<meta name="description" content="Blender에서 만든 컨베이어 스테이션 GLB를 three.js 스튜디오 조명으로 보는 모니터링 트윈 테스트">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --studio: #e4e7eb;
+    --ink: #1a1e24;
+    --ink-2: #566070;
+    --ink-3: #8a93a0;
+    --panel: rgba(247, 248, 250, 0.86);
+    --panel-solid: #f7f8fa;
+    --line: rgba(26, 30, 36, 0.10);
+    --line-2: rgba(26, 30, 36, 0.18);
+    --signal: #d9821b;
+    --signal-soft: rgba(217, 130, 27, 0.14);
+    --ok: #1f9d57;
+    --busy: #d9821b;
+    --err: #d23b2e;
+    --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--studio); color: var(--ink);
+    font-family: var(--sans); font-size: 14px; overflow: hidden;
+  }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; outline: none; }
+  .hud { position: fixed; z-index: 2; pointer-events: none; }
+  .hud > * { pointer-events: auto; }
+
+  .title {
+    top: calc(16px + env(safe-area-inset-top, 0px)); left: 16px;
+    display: grid; gap: 6px; max-width: min(420px, calc(100vw - 32px));
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-2);
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.2; text-wrap: balance; }
+  .specs {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 0; padding: 0; list-style: none;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .specs b { font-weight: 500; color: var(--ink); }
+
+  .status {
+    top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px;
+    background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    display: grid; gap: 8px; min-width: 196px;
+  }
+  .status h2 { margin: 0; font-size: 11px; font-weight: 500; font-family: var(--mono);
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+  .st-row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; }
+  .st-id { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .st-name { font-size: 12px; color: var(--ink-2); }
+  .pill {
+    font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
+    padding: 2px 7px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill[data-s="RUN"] { color: var(--ok); background: rgba(31, 157, 87, 0.12); }
+  .pill[data-s="BUSY"] { color: var(--busy); background: var(--signal-soft); }
+  .pill[data-s="ERROR"] { color: var(--err); background: rgba(210, 59, 46, 0.12); }
+  .counters { display: flex; justify-content: space-between; gap: 12px; padding-top: 6px;
+    border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; }
+  .counters b { color: var(--ink); font-weight: 500; }
+
+  .bar {
+    left: 50%; transform: translateX(-50%);
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: max-content; max-width: calc(100vw - 32px);
+    background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 12px; padding: 6px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  }
+  .seg { display: flex; gap: 2px; padding: 2px; background: rgba(26, 30, 36, 0.05); border-radius: 8px; }
+  .seg button, .tog {
+    font: 500 12px/1 var(--sans); color: var(--ink-2); background: transparent;
+    border: 0; border-radius: 6px; padding: 8px 10px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--panel-solid); color: var(--ink);
+    box-shadow: 0 1px 2px rgba(26, 30, 36, 0.12); }
+  .seg button:hover, .tog:hover { color: var(--ink); }
+  .divider { width: 1px; align-self: stretch; background: var(--line); margin: 4px 2px; }
+  .tog { display: inline-flex; align-items: center; gap: 7px; }
+  .tog .sw { width: 24px; height: 14px; border-radius: 7px; background: var(--line-2); position: relative; transition: background .2s; }
+  .tog .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px;
+    border-radius: 50%; background: #fff; transition: transform .2s; }
+  .tog[aria-pressed="true"] { color: var(--ink); }
+  .tog[aria-pressed="true"] .sw { background: var(--signal); }
+  .tog[aria-pressed="true"] .sw::after { transform: translateX(10px); }
+  .tog.danger[aria-pressed="true"] .sw { background: var(--err); }
+  button:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+
+  .pick {
+    left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px; display: grid; gap: 2px; max-width: 280px;
+  }
+  .pick span { color: var(--ink-2); font-family: var(--sans); }
+  .pick[hidden] { display: none; }
+
+  .label3d {
+    font-family: var(--sans); text-align: center; pointer-events: none;
+    display: grid; gap: 1px; transform: translateY(-8px);
+  }
+  .label3d b { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .label3d i { font-style: normal; font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); }
+  .labels-off .label3d { opacity: 0; }
+
+  .loading {
+    position: fixed; inset: 0; display: grid; place-items: center; z-index: 5;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-2); background: var(--studio);
+    transition: opacity .5s;
+  }
+  .loading.done { opacity: 0; pointer-events: none; }
+
+  @media (max-width: 760px) {
+    .status { top: auto; bottom: calc(118px + env(safe-area-inset-bottom, 0px)); right: 16px; min-width: 0; }
+    .pick { display: none; }
+    .title h1 { font-size: 18px; }
+    .specs { font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tog .sw, .tog .sw::after, .loading { transition: none; }
+  }
+</style>
+
+<div id="stage" aria-label="컨베이어 스테이션 3D 미리보기"></div>
+<div class="loading" id="loading">GLB 불러오는 중…</div>
+
+<header class="hud title">
+  <div class="eyebrow">Monitoring twin · Asset test 01</div>
+  <h1>컨베이어 스테이션</h1>
+  <ul class="specs">
+    <li>길이 <b>3.8 m</b></li>
+    <li>벨트 폭 <b>240 mm</b></li>
+    <li>벨트 높이 <b>800 mm</b></li>
+    <li>스테이션 피치 <b>1.1 m</b></li>
+    <li id="tris">삼각형 <b>–</b></li>
+  </ul>
+</header>
+
+<aside class="hud status" aria-live="polite">
+  <h2>라인 상태 (데모)</h2>
+  <div class="st-row"><span class="st-id">ST1</span><span class="st-name">조립 · 석션</span><span class="pill" id="s1" data-s="RUN">RUN</span></div>
+  <div class="st-row"><span class="st-id">ST2</span><span class="st-name">가공 · 도포</span><span class="pill" id="s2" data-s="RUN">RUN</span></div>
+  <div class="st-row"><span class="st-id">ST3</span><span class="st-name">검사 · 분류</span><span class="pill" id="s3" data-s="RUN">RUN</span></div>
+  <div class="counters"><span>피치 <b id="pitch">0</b></span><span>벨트 <b id="speed">0.00</b> m/s</span></div>
+</aside>
+
+<div class="hud pick" id="pick" hidden><b id="pickName">–</b><span id="pickInfo"></span></div>
+
+<nav class="hud bar" aria-label="보기 설정">
+  <div class="seg" role="group" aria-label="카메라">
+    <button id="v-hero" aria-pressed="true">3/4</button>
+    <button id="v-front" aria-pressed="false">정면</button>
+    <button id="v-end" aria-pressed="false">측면</button>
+    <button id="v-top" aria-pressed="false">위</button>
+    <button id="v-motor" aria-pressed="false">구동부</button>
+  </div>
+  <div class="divider"></div>
+  <button class="tog" id="t-run" aria-pressed="true"><span class="sw"></span>인덱싱</button>
+  <button class="tog danger" id="t-err" aria-pressed="false"><span class="sw"></span>ST2 에러</button>
+  <button class="tog" id="t-label" aria-pressed="true"><span class="sw"></span>라벨</button>
+  <button class="tog" id="t-hq" aria-pressed="true"><span class="sw"></span>고품질</button>
+</nav>
+
+<script id="glb" type="application/octet-stream">__GLB_BASE64__</script>
+<script id="indy7" type="application/json">__INDY7__</script>
+<script type="importmap">
+{ "imports": {
+  "three": "__THREE__/build/three.module.js",
+  "three/addons/": "__THREE__/examples/jsm/",
+  "three/examples/jsm/": "__THREE__/examples/jsm/",
+  "urdf-loader": "__URDF_LOADER__"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
+import URDFLoader from "urdf-loader";
+
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+const STUDIO = new THREE.Color("#e4e7eb");
+
+// ── 렌더러 · 씬 ──────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+labelRenderer.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none";
+stage.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = STUDIO;
+scene.fog = new THREE.Fog(STUDIO, 7, 17);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.75;
+
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.05, 60);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 0.6;
+controls.maxDistance = 9;
+
+// 키 라이트 (그림자) + 보조광
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(-2.4, 4.2, 3.0);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -3, right: 3, top: 2.2, bottom: -2.2, near: 0.5, far: 12 });
+key.shadow.bias = -0.0002;
+key.shadow.normalBias = 0.012;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xdfe8ff, 0.55);
+fill.position.set(3, 2.5, -3);
+scene.add(fill);
+
+// 스튜디오 바닥 (안개로 배경과 이어짐)
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(20, 96),
+  new THREE.MeshStandardMaterial({ color: 0xdadde2, roughness: 0.94, metalness: 0 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ── 후처리 ──────────────────────────────────────────
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+gtao.updateGtaoMaterial({ radius: 0.12, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 16 });
+gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+gtao.blendIntensity = 0.85;
+composer.addPass(gtao);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.4, 1.6);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+let hq = innerWidth > 760;
+gtao.enabled = hq;
+
+// ── GLB 불러오기 ──────────────────────────────────────────
+function b64ToBuffer(b64) {
+  const bin = atob(b64.trim());
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
+// ── Indy7 (digital_twin2 frontend/src/three/urdfRobot.ts 포팅) ──────────────
+// STL 형상·재질은 한 번만 만들고 3대가 공유, 관절 상태(q)는 로봇마다 따로 가진다.
+const JOINT_NAMES = ["joint0", "joint1", "joint2", "joint3", "joint4", "joint5"];
+const DEG2RAD = Math.PI / 180;
+const INDY7_READY = [0, 0, -90, 0, -90, 0];   // URDF ros2_control 초기값 (팔꿈치·손목 -90°)
+
+function createIndy7Factory({ urdf, meshes }) {
+  const stl = new STLLoader();
+  const geoms = {};
+  for (const [name, b64] of Object.entries(meshes)) geoms[name] = stl.parse(b64ToBuffer(b64));
+  const material = new THREE.MeshStandardMaterial({ color: 0xf1f2f4, metalness: 0.1, roughness: 0.42 });
+  const loader = new URDFLoader();
+  loader.parseCollision = false;
+  loader.loadMeshCb = (path, manager, done) => {
+    const g = geoms[path.split("/").pop()];
+    if (g) done(new THREE.Mesh(g, material));
+    else done(null, new Error(`Indy7 메시 없음: ${path}`));
+  };
+
+  return function createIndy7() {
+    const robot = loader.parse(urdf);
+    robot.rotation.x = -Math.PI / 2;   // URDF Z-up → three.js Y-up
+    let tris = 0;
+    robot.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.material !== material) { o.material.dispose(); o.material = material; }   // urdf-loader가 만든 재질 대신 공유 재질
+      o.castShadow = true;
+      o.receiveShadow = true;
+      tris += o.geometry.attributes.position.count / 3;
+    });
+    const q = INDY7_READY.slice();   // 관절 상태 (deg, joint0..5) — 이 로봇 전용
+    const setJoints = (next) => {
+      JOINT_NAMES.forEach((name, i) => {
+        q[i] = next[i];
+        robot.joints[name]?.setJointValue(q[i] * DEG2RAD);
+      });
+    };
+    setJoints(q);
+    return { object: robot, q, tris, setJoints };
+  };
+}
+
+const COLORS = {
+  RUN: new THREE.Color(0.15, 1.0, 0.45),
+  BUSY: new THREE.Color(1.0, 0.55, 0.08),
+  ERROR: new THREE.Color(1.0, 0.12, 0.08),
+};
+const ROLE = [
+  [/^Conveyor_Belt/, "벨트 · UV 스크롤로 흐름 표현"],
+  [/^Drum_/, "드럼 · 기준점 = 회전축 중심"],
+  [/^Roller_/, "리턴 롤러 · 기준점 = 회전축 중심"],
+  [/^Conveyor_Motor/, "구동 기어모터"],
+  [/^Conveyor_Frame/, "40×80 / 40×40 T슬롯 프로파일"],
+  [/^Conveyor_Guide/, "팔레트 가이드 (UHMW)"],
+  [/^Conveyor_Hardware/, "베어링 · 발 · 볼트"],
+  [/^Conveyor_Reflectors/, "센서 반사판"],
+  [/^Sensor_ST\d_LED/, "도착 센서 표시등"],
+  [/^Sensor_ST/, "팔레트 도착 센서"],
+  [/^Pallet_/, "팔레트 · 기준점 = 바닥 중심"],
+  [/^Indy7_ST\d/, "Indy7 · 형상 공유, 관절 상태 개별"],
+  [/^Robot_Pedestal/, "Indy7 받침대"],
+  [/^Status_Ring/, "스테이션 상태 링"],
+  [/^Camera_ST\d_Light/, "카메라 링 조명"],
+  [/^CameraStand/, "카메라 스탠드"],
+  [/^Camera_/, "비전 카메라"],
+];
+
+let line, belt, tile = 0.25;
+const rollers = [], drums = [], pallets = [], leds = [], rings = [], camLights = [];
+const pickables = [];
+const robots = {};   // ST1~3 → { object, q, setJoints } · 관절 상태는 여기서 로봇별로 관리
+
+new GLTFLoader().parse(b64ToBuffer($("glb").textContent), "", (gltf) => {
+  line = gltf.scene;
+  let tris = 0;
+  line.traverse((o) => {
+    if (o.isMesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+      tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+      pickables.push(o);
+    }
+  });
+  const root = line.getObjectByName("EV_Line");
+  tile = root?.userData?.belt_tile_m ?? 0.2519;
+  belt = line.getObjectByName("Conveyor_Belt");
+  belt.traverse((o) => { if (o.isMesh && o.material.map) { o.material.map.wrapS = THREE.RepeatWrapping; belt.userData.map = o.material.map; } });
+
+  line.traverse((o) => {
+    if (/^Roller_\d+$/.test(o.name)) rollers.push(o);
+    if (/^Drum_/.test(o.name)) drums.push(o);
+  });
+
+  // 표시등 · 상태 링 · 카메라 조명은 재질을 개별로 복제해 따로 제어
+  for (let i = 1; i <= 3; i++) {
+    const led = line.getObjectByName(`Sensor_ST${i}_LED`);
+    led.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.castShadow = false; leds[i] = o.material; } });
+    const ring = line.getObjectByName(`Status_Ring_ST${i}`);
+    ring.traverse((o) => { if (o.isMesh) { o.castShadow = false; rings[i] = o.material; } });
+  }
+  for (const i of [2, 3]) {
+    const l = line.getObjectByName(`Camera_ST${i}_Light`);
+    l.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.castShadow = false; camLights[i] = o.material; } });
+  }
+
+  // 팔레트 4개 (3개 + 투입 대기 1개), 재질 복제해서 페이드 처리
+  const p1 = line.getObjectByName("Pallet_01");
+  const extra = p1.clone(true);
+  extra.name = "Pallet_04";
+  p1.parent.add(extra);
+  const startX = [-1.1, 0, 1.1, -2.2];
+  ["Pallet_01", "Pallet_02", "Pallet_03", "Pallet_04"].forEach((n, k) => {
+    const p = line.getObjectByName(n);
+    p.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; } });
+    p.position.x = startX[k];
+    pallets.push(p);
+  });
+
+  // Indy7 3대 (Robot_Mount_ST1~3) + 스테이션 라벨
+  const createIndy7 = createIndy7Factory(JSON.parse($("indy7").textContent));
+  const LABEL = { 1: ["ST1 조립", "R1 · Indy7 · 석션"], 2: ["ST2 가공", "R2 · Indy7 · 디스펜서"], 3: ["ST3 검사", "R3 · Indy7 · 그리퍼"] };
+  for (let i = 1; i <= 3; i++) {
+    const mount = line.getObjectByName(`Robot_Mount_ST${i}`);
+    const r = createIndy7();
+    const rig = new THREE.Group();
+    rig.name = `Indy7_ST${i}`;
+    rig.rotation.y = -Math.PI / 2;   // 베이스 +X(URDF 정면)를 컨베이어 쪽(three +Z)으로
+    rig.add(r.object);
+    mount.add(rig);
+    r.object.traverse((o) => { if (o.isMesh) pickables.push(o); });
+    tris += r.tris;
+    robots[`ST${i}`] = r;
+
+    const el = document.createElement("div");
+    el.className = "label3d";
+    el.innerHTML = `<b>${LABEL[i][0]}</b><i>${LABEL[i][1]}</i>`;
+    const obj = new CSS2DObject(el);
+    obj.position.set(0, 1.12, 0);
+    mount.add(obj);
+  }
+
+  window.twin = { robots };   // 콘솔 디버깅용: twin.robots.ST1.setJoints([...])
+  scene.add(line);
+  $("tris").innerHTML = `삼각형 <b>${Math.round(tris / 1000)}k</b>`;
+  setStates();
+  $("loading").classList.add("done");
+  setTimeout(() => { $("loading").hidden = true; }, 600);
+});
+
+// ── 카메라 프리셋 ──────────────────────────────────────────
+const VIEWS = {
+  hero:  { pos: [-1.9, 1.75, 3.1], tgt: [0.15, 0.62, -0.1] },
+  front: { pos: [0, 1.25, 3.6], tgt: [0, 0.72, -0.15] },
+  end:   { pos: [3.5, 1.35, 1.2], tgt: [0.4, 0.72, -0.1] },
+  top:   { pos: [0.001, 4.6, 0.25], tgt: [0, 0.6, -0.2] },
+  motor: { pos: [2.55, 1.02, 0.95], tgt: [1.8, 0.74, 0.05] },
+};
+let fly = null;
+function setView(name, instant = false) {
+  const v = VIEWS[name];
+  for (const k of Object.keys(VIEWS)) $("v-" + k).setAttribute("aria-pressed", String(k === name));
+  const to = { pos: new THREE.Vector3(...v.pos), tgt: new THREE.Vector3(...v.tgt) };
+  if (instant) { camera.position.copy(to.pos); controls.target.copy(to.tgt); controls.update(); return; }
+  fly = { from: { pos: camera.position.clone(), tgt: controls.target.clone() }, to, t: 0 };
+}
+for (const k of Object.keys(VIEWS)) $("v-" + k).addEventListener("click", () => setView(k));
+controls.addEventListener("start", () => { fly = null; for (const k of Object.keys(VIEWS)) $("v-" + k).setAttribute("aria-pressed", "false"); });
+setView("hero", true);
+
+// ── 토글 ──────────────────────────────────────────
+const state = { run: true, err: false, labels: true };
+function toggle(id, fn) {
+  const b = $(id);
+  b.addEventListener("click", () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); fn(on); });
+}
+toggle("t-run", (on) => { state.run = on; });
+toggle("t-err", (on) => { state.err = on; setStates(); });
+toggle("t-label", (on) => { state.labels = on; stage.classList.toggle("labels-off", !on); });
+$("t-hq").setAttribute("aria-pressed", String(hq));
+toggle("t-hq", (on) => { hq = on; gtao.enabled = on; bloom.enabled = on; });
+
+// ── 인덱싱 데모 (동기식: 이동 → 정지 → 로봇 작업) ──────────────────
+const PITCH = 1.1, MOVE_T = 2.2, DWELL_T = 2.6;
+let phase = "dwell", phaseT = 0, pitchCount = 0, speed = 0;
+const stations = ["RUN", "RUN", "RUN"];
+
+function setStates() {
+  for (let i = 1; i <= 3; i++) {
+    let s = phase === "dwell" && phaseT < DWELL_T - 0.3 ? "BUSY" : "RUN";
+    if (i === 2 && state.err) s = "ERROR";
+    stations[i - 1] = s;
+    const pill = $("s" + i);
+    if (pill.dataset.s !== s) { pill.dataset.s = s; pill.textContent = s; }
+  }
+}
+
+// 데모용 관절 궤적: 정지(dwell) 동안 대기 자세 → 작업 자세 → 대기 자세. ERROR면 그 자리에 멈춤.
+// (WebSocket 전환 시 이 함수 대신 수신한 q를 robots[id].setJoints(q)로 넣는다)
+// 작업 자세 = 팔레트 중심 위 TCP(툴 아래 방향). 페이지에서 FK 수치 탐색으로 구함 (joint0 +23°는 어깨 오프셋 보정)
+const WORK_POSE = {
+  ST1: [23, -32, -99, 0, -64, 0],    // TCP 높이 0.95
+  ST2: [23, -32, -99, 0, -64, 0],    // TCP 높이 0.95
+  ST3: [23, -37, -100, 0, -60, 0],   // TCP 높이 0.90
+};
+const SWEEP = { ST1: 0, ST2: 14, ST3: 0 };   // ST2 도포: joint0 좌우 스윕 (deg)
+const qTmp = [0, 0, 0, 0, 0, 0];
+function stepRobots() {
+  for (let i = 1; i <= 3; i++) {
+    const id = `ST${i}`, r = robots[id];
+    if (!r || stations[i - 1] === "ERROR") continue;
+    const u = phase === "dwell" ? THREE.MathUtils.clamp((phaseT - 0.2) / (DWELL_T - 0.7), 0, 1) : 0;
+    const k = 0.5 - 0.5 * Math.cos(2 * Math.PI * u);
+    for (let j = 0; j < 6; j++) qTmp[j] = INDY7_READY[j] + (WORK_POSE[id][j] - INDY7_READY[j]) * k;
+    qTmp[0] += SWEEP[id] * Math.sin(4 * Math.PI * u) * k;
+    r.setJoints(qTmp);
+  }
+}
+
+function stepDemo(dt, t) {
+  if (!pallets.length) return;
+  phaseT += dt;
+  speed = 0;
+  if (phase === "dwell") {
+    if (phaseT >= DWELL_T && state.run && !state.err) { phase = "move"; phaseT = 0; pallets.forEach((p) => (p.userData.x0 = p.position.x)); }
+  } else {
+    const u = Math.min(phaseT / MOVE_T, 1);
+    const s = PITCH * (u - Math.sin(2 * Math.PI * u) / (2 * Math.PI));   // 사이클로이드 가감속
+    speed = (PITCH / MOVE_T) * (1 - Math.cos(2 * Math.PI * u));
+    pallets.forEach((p) => (p.position.x = p.userData.x0 + s));
+    if (u >= 1) {
+      pallets.forEach((p) => { if (p.position.x > 1.6) p.position.x -= PITCH * 4; });   // 배출 → 투입 대기로 순환
+      phase = "dwell"; phaseT = 0; pitchCount++;
+      $("pitch").textContent = pitchCount;
+    }
+  }
+  // 팔레트 페이드 (라인 양 끝)
+  for (const p of pallets) {
+    const a = THREE.MathUtils.clamp((1.95 - Math.abs(p.position.x)) / 0.3, 0, 1);
+    p.visible = a > 0.01;
+    p.traverse((o) => { if (o.isMesh) { o.material.opacity = a; o.material.depthWrite = a > 0.98; } });
+  }
+  // 벨트 · 드럼 · 롤러: 이동 속도에 맞춰 회전
+  if (belt?.userData.map) belt.userData.map.offset.x -= (speed * dt) / tile;
+  for (const d of drums) d.rotation.z -= (speed / 0.032) * dt;
+  for (const r of rollers) r.rotation.z += (speed / 0.015) * dt;
+
+  // 상태 링 · 센서 표시등 · 카메라 플래시
+  setStates();
+  for (let i = 1; i <= 3; i++) {
+    const s = stations[i - 1];
+    const m = rings[i];
+    if (m) {
+      m.emissive.copy(COLORS[s]);
+      const pulse = s === "ERROR" ? 0.55 + 0.45 * Math.sin(t * 7) : s === "BUSY" ? 0.8 + 0.2 * Math.sin(t * 3) : 1;
+      m.emissiveIntensity = 3 * pulse;
+    }
+    const at = pallets.some((p) => Math.abs(p.position.x - (i - 2) * PITCH) < 0.02);
+    if (leds[i]) leds[i].emissiveIntensity = at ? 3.2 : 0.08;
+  }
+  stepRobots();
+  for (const i of [2, 3]) {
+    if (!camLights[i]) continue;
+    const flash = phase === "dwell" && phaseT > 0.4 && phaseT < 0.55 && !(i === 2 && state.err);
+    camLights[i].emissiveIntensity = flash ? 9 : 2;
+  }
+  $("speed").textContent = speed.toFixed(2);
+}
+
+// ── 호버: 오브젝트 이름 표시 (three.js에서 쓰는 이름 확인용) ──────────────
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+let hoverDirty = false;
+renderer.domElement.addEventListener("pointermove", (e) => {
+  ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  hoverDirty = true;
+});
+renderer.domElement.addEventListener("pointerleave", () => { $("pick").hidden = true; });
+function namedAncestor(o) {
+  while (o && !ROLE.some(([re]) => re.test(o.name))) o = o.parent;
+  return o;
+}
+function updatePick() {
+  if (!hoverDirty || !pickables.length) return;
+  hoverDirty = false;
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(pickables, false).find((h) => h.object.visible);
+  const o = hit && namedAncestor(hit.object);
+  if (!o) { $("pick").hidden = true; return; }
+  $("pickName").textContent = o.name;
+  $("pickInfo").textContent = ROLE.find(([re]) => re.test(o.name))[1];
+  $("pick").hidden = false;
+}
+
+// ── 루프 ──────────────────────────────────────────
+const clock = new THREE.Clock();
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  if (fly) {
+    fly.t = Math.min(fly.t + dt / 1.1, 1);
+    const k = 1 - Math.pow(1 - fly.t, 3);
+    camera.position.lerpVectors(fly.from.pos, fly.to.pos, k);
+    controls.target.lerpVectors(fly.from.tgt, fly.to.tgt, k);
+    if (fly.t >= 1) fly = null;
+  }
+  controls.update();
+  stepDemo(dt, t);
+  updatePick();
+  composer.render();
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+frame();
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+</script>
