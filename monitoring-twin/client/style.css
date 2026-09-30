@@ -83,6 +83,7 @@ body.stale #stage { filter: grayscale(1); opacity: 0.55; }
 .views { position: fixed; z-index: 3; left: 32px; bottom: 150px; display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--glass); }
 .views button, .demo button { height: 44px; padding: 0 18px; border: none; border-radius: 999px; background: transparent; color: var(--ink-2); font: inherit; font-weight: 500; cursor: pointer; }
 .views button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.views .sep { width: 1px; margin: 8px 4px; background: rgba(31, 35, 40, 0.15); }
 button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--busy); outline-offset: 2px; }
 
 /* 요약·알람 */
