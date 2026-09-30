@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모니터링 트윈</title>
+<meta name="description" content="전차 모형 조립·검사 라인의 상태를 3D 트윈으로 보여 주는 모니터링 화면">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/build/three.module.js",
+  "three/addons/": "./vendor/three/examples/jsm/",
+  "three/examples/jsm/": "./vendor/three/examples/jsm/",
+  "urdf-loader": "./vendor/urdf-loader/URDFLoader.js"
+} }
+</script>
+</head>
+<body>
+<div id="stage" aria-label="라인 3D 트윈"></div>
+<div class="loading" id="loading">3D 모델 불러오는 중…</div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="eyebrow">전차 모형 조립·검사 라인</span>
+    <span class="brand-name">모니터링 트윈</span>
+  </div>
+  <nav class="nav" aria-label="페이지">
+    <a href="./" aria-current="page">트윈</a>
+    <a aria-disabled="true" title="M5에서 제공">통계</a>
+    <a aria-disabled="true" title="M5에서 제공">기록</a>
+  </nav>
+  <div class="links" id="links" aria-label="연결 상태"></div>
+  <time class="clock" id="clock">--:--:--</time>
+</header>
+
+<div class="banner" id="banner" role="status" hidden></div>
+
+<section class="card headline">
+  <h1 id="headline">연결 중…</h1>
+  <div class="row">
+    <span class="pill" id="linePill" data-tone="muted">–</span>
+    <span class="muted" id="lineNote"></span>
+  </div>
+</section>
+
+<aside class="robots" id="robots" aria-label="로봇 상태"></aside>
+
+<div class="views" role="group" aria-label="시점">
+  <button type="button" data-view="front" aria-pressed="true">정면</button>
+  <button type="button" data-view="top" aria-pressed="false">위</button>
+  <button type="button" data-view="free" aria-pressed="false">자유</button>
+</div>
+
+<section class="card summary" aria-label="라인 요약">
+  <div class="stat"><span class="muted">합격 트레이</span><b id="trayPass">0</b></div>
+  <div class="stat"><span class="muted">불합격 트레이</span><b id="trayFail">0</b></div>
+  <div class="stat"><span class="muted">보관창고</span><b id="storage">0 / 3</b></div>
+  <div class="stat last"><span class="muted">마지막 가동</span><b id="lastRun">–</b><span class="muted small" id="lastRunNote"></span></div>
+</section>
+
+<section class="card alarms" aria-label="알람">
+  <div class="row between"><span class="muted">알람</span><span id="alarmCount" class="small">활성 없음</span></div>
+  <ul id="alarmList" class="alarm-list"></ul>
+</section>
+
+<section class="card demo" id="demo" hidden aria-label="모의 시나리오 재생">
+  <label for="demoScenario" class="muted small">모의 시나리오</label>
+  <select id="demoScenario"></select>
+  <label for="demoSpeed" class="muted small">배속</label>
+  <select id="demoSpeed"><option>1</option><option selected>2</option><option>5</option><option>10</option></select>
+  <button type="button" id="demoPlay">재생</button>
+</section>
+
+<div class="fps" id="fps" aria-hidden="true"></div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>

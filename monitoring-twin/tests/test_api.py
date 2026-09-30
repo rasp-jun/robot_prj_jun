@@ -80,3 +80,13 @@ def test_mock_play_over_http_and_ws():
             assert done
             assert seqs == sorted(seqs) and len(set(seqs)) == len(seqs)
         assert c.get("/api/snapshot").json()["last_run"]["run_no"] == 1
+
+
+def test_static_client_manifest_and_models(client):
+    assert client.get("/").status_code == 200
+    manifest = client.get("/assets/manifest.json").json()
+    for key in ("line", "indy7"):
+        r = client.get(manifest["models"][key])
+        assert r.status_code == 200, manifest["models"][key]
+    assert client.get(manifest["models"]["indy7_meshes"] + "Indy7_0.stl").status_code == 200
+    assert client.get("/vendor/three/build/three.module.js").status_code == 200

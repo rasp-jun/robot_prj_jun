@@ -161,6 +161,7 @@ def create_app(source: str = config.SOURCE) -> FastAPI:
             server.hub.clients.discard(ws)
 
     app.mount("/assets", StaticFiles(directory=config.ASSETS_DIR, check_dir=False), name="assets")
+    app.mount("/models", StaticFiles(directory=config.MODELS_DIR, check_dir=False), name="models")
     app.mount("/", StaticFiles(directory=config.CLIENT_DIR, html=True, check_dir=False), name="client")
     return app
 

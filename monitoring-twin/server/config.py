@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CLIENT_DIR = ROOT / "client"
 ASSETS_DIR = ROOT / "assets"
+MODELS_DIR = ROOT.parent / "web" / "assets"  # 컨베이어 GLB·Indy7 원본 (복사하지 않고 그대로 서빙)
 SCENARIO_DIR = ROOT / "mock" / "scenarios"
 
 # 이벤트 출처: "mock"이면 서버 시작 시 MT_SCENARIO를 재생, "none"이면 아무것도 넣지 않음
