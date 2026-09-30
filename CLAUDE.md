@@ -5,7 +5,8 @@
 라인 요구사항은 `docs/prd.md`, 웹 앱 작업은 `monitoring-twin/CLAUDE.md`를 따른다. 이 문서와 다르면 그쪽이 우선이다.
 
 ## 폴더
-- `docs/` — 라인 PRD(`prd.md`), 공정표(`process-table.md`), 시스템 블록도, 발표 이미지
+- `docs/` — 라인 PRD(`prd.md`), 공정표(`process-table.md`), 시스템 블록도, 발표 이미지,
+  게이트웨이·비전 코드 작성 규칙(`gateway-vision-rules.md`, 모니터링 웹 연동 포함)
 - `monitoring-twin/` — 모니터링 웹 앱 (FastAPI 서버 + three.js 트윈·통계·기록 화면). 작업 지침은 그 폴더의 `CLAUDE.md`
 - `blender/source/` — 디자인팀이 보내 준 전차 모델 원본 (손대지 않고 보관, `README.md` 참고)
 - `blender/conveyor_gen.py` — 컨베이어·받침대·팔레트·카메라 스탠드를 생성하는 Blender 스크립트 (파라메트릭)
