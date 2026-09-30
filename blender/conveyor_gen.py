@@ -24,6 +24,14 @@ EV 모형 생산 라인 — 컨베이어 스테이션 에셋 생성 (Blender 4.2
   Status_Ring_ST1~3        스테이션 상태 링 (재질 개별)
   Sensor_ST1~3_LED         팔레트 도착 센서 표시등
   Camera_ST2/ST3_Light     카메라 링 조명
+  Sensor_CV2_LED, Sensor_CV5_LED  버퍼·잉여 구간 도착 센서 표시등
+  Zone_CV1 ~ Zone_CV5      구간 경계 빈 오브젝트 (extras: cv, role, x_start, x_end)
+  Tray_Pass / Tray_Fail    합격/불합격 트레이 (ST3 받침대 양옆). 전차 자리 = Tray_*_Slot_01~03
+  Storage                  보관창고 고정부 (기둥, 서보 모터)
+  Storage_Rack             서보로 상하 이동하는 3단 선반. 기준점 = 1칸 윗면 중심, 기본 = 1칸이 벨트 높이
+  Storage_Slot_01 ~ 03     선반의 칸 (Storage_Rack 자식, extras.level). k칸을 벨트에 맞추려면
+                           Storage_Rack 높이를 -(k-1)×storage_pitch 만큼 내린다
+  EV_Line extras           zone_x, storage_slots, storage_pitch, storage_stroke, storage_x
 """
 import bpy
 import bmesh
@@ -57,6 +65,19 @@ P = dict(
     return_r=0.015,        # 리턴 롤러 반지름
     return_pitch=0.38,
     belt_tile=0.25,        # 벨트 텍스처 반복 길이 (근사값, 이음매 없게 자동 보정)
+    # 컨베이어 5구간 경계 x (CV1 ST1 | CV2 버퍼 | CV3 ST2 | CV4 ST3 | CV5 잉여). 벨트는 하나, 구간은 논리 분할
+    zone_x=[-1.9, -0.825, -0.275, 0.55, 1.4, 1.9],
+    zone_sensor_cv=[2, 5],  # 스테이션 외에 도착 센서를 다는 구간 (버퍼, 잉여)
+    cameras=[2, 3],         # 카메라 스탠드를 세울 스테이션 (라인 PRD P0은 ST3만, 디자인팀 확인 전까지 유지)
+    # 합격/불합격 트레이 (ST3 로봇 받침대 양옆)
+    tray_dx=0.38,           # ST3 중심에서 트레이 중심까지 x 거리 (불합격 -, 합격 +). ST3 카메라 스탠드와 간섭 없게
+    tray=(0.26, 0.60, 0.04),  # 트레이 외곽 L(x), W(y, 전차 자리가 이 방향으로 늘어섬), 벽 높이
+    tray_top=0.60,          # 트레이 받침대 윗면 높이
+    tray_slots=3,           # 트레이 위 전차 자리 수 (표시용)
+    # 보관창고: 헤드 드럼 너머, 서보가 3단 선반 전체를 상하로 움직여 채울 칸을 벨트 높이에 맞춘다
+    storage_slots=3,        # 칸 수 (2026-09-30 확정)
+    storage_pitch=0.18,     # 칸 간격 (가정: 전차를 얹은 팔레트 높이 + 여유)
+    storage_gap=0.09,       # 헤드 드럼과 선반 사이 틈 (레일 끝·기어박스와 간섭 없게)
 )
 
 OUT_DIR = os.environ.get(
@@ -74,6 +95,11 @@ BELT_R = P["drum_r"] + P["belt_t"] / 2             # 벨트 중심선 반지름
 DRUM_Z = P["belt_top"] - P["belt_t"] - P["drum_r"]  # 드럼 축 높이
 HALF_L = P["length"] / 2
 RAIL_LEN = P["length"] + 2 * P["drum_r"] + 0.05
+
+
+def zone_center(cv):
+    """구간 CV{cv}의 가운데 x."""
+    return (P["zone_x"][cv - 1] + P["zone_x"][cv]) / 2
 
 
 # ─────────────────────────────── 재질 ───────────────────────────────
@@ -435,17 +461,19 @@ def build_conveyor(root):
                   (0, s * (g_in + P["guide_w"] / 2), RAIL_TOP + P["guide_h"] / 2), MAT["guide"])
     guide.build(parent=conv, bevel=0.0012)
 
-    # 스테이션 도착 센서 (앞 레일) + 반사판 (뒤 레일)
+    # 도착 센서 (앞 레일) + 반사판 (뒤 레일): 스테이션 3곳 + 버퍼·잉여 구간
     refl = Part("Conveyor_Reflectors")
-    for i, sx in enumerate(P["station_x"], 1):
-        x = sx + P["pallet"][0] / 2 + 0.012
-        sen = Part(f"Sensor_ST{i}")
+    targets = [(f"Sensor_ST{i}", sx) for i, sx in enumerate(P["station_x"], 1)]
+    targets += [(f"Sensor_CV{cv}", zone_center(cv)) for cv in P["zone_sensor_cv"]]
+    for name, cx in targets:
+        x = min(cx + P["pallet"][0] / 2 + 0.012, HALF_L - 0.24)  # head 쪽 구동 모터 몸체(x ≥ HALF_L-0.195)와 간섭 없게
+        sen = Part(name)
         by = -(RAIL_OUT + 0.011)
         sen.box((0.004, 0.018, 0.05), (x, -(RAIL_OUT + 0.002), RAIL_TOP - 0.01), MAT["alu"])  # L 브래킷
         sen.box((0.024, 0.016, 0.034), (x, by, RAIL_TOP + 0.012), MAT["black"])               # 센서 몸체
         sen.cyl(0.005, 0.004, (x, by + 0.009, RAIL_TOP + 0.005), MAT["lens"], axis="Y", segs=20)
         sen.build(parent=conv, bevel=0.0015)
-        led = Part(f"Sensor_ST{i}_LED")
+        led = Part(f"{name}_LED")
         led.box((0.006, 0.006, 0.002), (0, 0, 0), MAT["led_amber"])
         led.build(parent=conv, location=(x + 0.006, by, RAIL_TOP + 0.030))
         refl.box((0.022, 0.003, 0.022), (x, RAIL_OUT + 0.0015, RAIL_TOP - 0.002), MAT["reflector"])
@@ -479,7 +507,7 @@ def build_stations(root):
         ring.annulus(0.285, 0.30, 0.0005, 0.0035, (0, ry), MAT[f"status{i}"])
         ring.build(parent=st)
 
-        if i in (2, 3):
+        if i in P["cameras"]:
             build_camera_stand(i, st)
 
 
@@ -525,6 +553,94 @@ def build_pallets(root):
         ob["pallet_no"] = i
 
 
+# ─────────────────────────────── 구간 경계 ───────────────────────────────
+def build_zones(root):
+    """Zone_CV1~5: 벨트 윗면 높이의 빈 오브젝트. three.js는 extras의 x 범위로 구간 좌표를 얻는다."""
+    roles = {1: "ST1", 2: "BUFFER", 3: "ST2", 4: "ST3", 5: "SURPLUS"}
+    xs = P["zone_x"]
+    for cv in range(1, len(xs)):
+        ob = empty(f"Zone_CV{cv}", location=(zone_center(cv), 0, P["belt_top"]), parent=root)
+        ob["cv"] = cv
+        ob["role"] = roles[cv]
+        ob["x_start"] = xs[cv - 1]
+        ob["x_end"] = xs[cv]
+
+
+# ─────────────────────────────── 트레이 ───────────────────────────────
+def build_trays(root):
+    """ST3 로봇 받침대 양옆의 합격/불합격 트레이 (받침대 + 트레이). 전차 자리는 Tray_*_Slot_NN."""
+    L, W, wall = P["tray"]
+    top = P["tray_top"]
+    x3 = P["station_x"][2]
+    ry = P["robot_y"]
+    pitch = W / P["tray_slots"]
+    for name, sign in (("Tray_Fail", -1), ("Tray_Pass", 1)):
+        pt = Part(name)
+        pt.box((L + 0.04, W + 0.04, 0.015), (0, 0, top - 0.0075), MAT["paint"])            # 받침대 상판
+        for lx in (-1, 1):
+            for ly in (-1, 1):
+                pt.profile(0.03, 0.03, top - 0.015, (lx * L / 2, ly * W / 2, (top - 0.015) / 2), MAT["frame"], axis="Z")
+        pt.box((L, W, 0.006), (0, 0, top + 0.003), MAT["black"])                            # 트레이 바닥
+        for s in (-1, 1):
+            pt.box((L, 0.006, wall), (0, s * (W / 2 - 0.003), top + wall / 2), MAT["black"])
+            pt.box((0.006, W, wall), (s * (L / 2 - 0.003), 0, top + wall / 2), MAT["black"])
+        for k in range(1, P["tray_slots"]):                                                 # 칸막이
+            pt.box((L - 0.012, 0.004, wall * 0.6), (0, -W / 2 + k * pitch, top + wall * 0.3), MAT["black"])
+        ob = pt.build(parent=root, location=(x3 + sign * P["tray_dx"], ry, 0), bevel=0.0015)
+        ob["verdict"] = "PASS" if sign > 0 else "FAIL"
+        for k in range(P["tray_slots"]):
+            slot = empty(f"{name}_Slot_{k + 1:02d}", location=(0, -W / 2 + (k + 0.5) * pitch, top + 0.006), parent=ob)
+            slot["slot"] = k + 1
+
+
+# ─────────────────────────────── 보관창고 ───────────────────────────────
+def build_storage(root):
+    """헤드 드럼 너머의 보관창고. 서보가 Storage_Rack(3단 선반) 전체를 상하로 움직여
+    채울 칸의 윗면을 벨트 윗면에 맞춘다. Rack 기준점 = 1칸 윗면 중심, 기본 위치 = 1칸이 벨트 높이."""
+    n, pitch = P["storage_slots"], P["storage_pitch"]
+    stroke = (n - 1) * pitch
+    sl, sw = P["pallet"][0] + 0.04, P["pallet"][1] + 0.06    # 선반 한 칸 크기
+    sx = HALF_L + P["drum_r"] + P["storage_gap"] + sl / 2
+    bt = P["belt_top"]
+    rack_h = stroke + 0.16                                    # 1칸 윗면 기준 선반 높이 범위 (-0.02 ~ rack_h)
+    post_h = bt + rack_h + 0.08                               # 1칸이 벨트에 있을 때(가장 높은 위치)를 덮는 높이
+
+    # 고정부: 기둥 4개, 상부 프레임, 서보 모터
+    fx, fy = sl / 2 + 0.03, sw / 2 + 0.03
+    st = Part("Storage")
+    st.box((2 * fx + P["leg"], 2 * fy + 0.1, 0.012), (0, 0, 0.006), MAT["paint"])           # 바닥판 (컨베이어 끝 아래로 들어가지 않게)
+    for lx in (-1, 1):
+        for ly in (-1, 1):
+            st.profile(P["leg"], P["leg"], post_h - 0.012, (lx * fx, ly * fy, 0.012 + (post_h - 0.012) / 2), MAT["frame"], axis="Z")
+    for ly in (-1, 1):
+        st.profile(P["leg"], P["leg"], 2 * fx + P["leg"], (0, ly * fy, post_h + 0.02), MAT["frame"], axis="X")
+    for lx in (-1, 1):
+        st.profile(P["leg"], P["leg"], 2 * fy - P["leg"], (lx * fx, 0, post_h + 0.02), MAT["frame"], axis="Y")
+    st.box((0.09, 0.09, 0.08), (fx, 0, post_h + 0.08), MAT["motor"])                       # 서보 기어박스
+    st.cyl(0.035, 0.12, (fx, 0, post_h + 0.18), MAT["motor"])                               # 서보 모터
+    st.cyl(0.006, post_h - 0.05, (fx - 0.01, 0, (post_h + 0.05) / 2), MAT["steel"], segs=16)  # 볼 스크루
+    storage = st.build(parent=root, location=(sx, 0, 0), smooth_angle=20, bevel=0.002)
+
+    # 움직이는 3단 선반 (벨트 쪽 -X는 열려 있음)
+    rk = Part("Storage_Rack")
+    for k in range(n):
+        z = k * pitch
+        rk.box((sl, sw, 0.012), (0, 0, z - 0.006), MAT["alu"])                               # 칸 바닥
+        rk.box((0.006, sw, 0.03), (sl / 2 - 0.003, 0, z + 0.015), MAT["alu"])                # 뒤 스토퍼
+    for sx_ in (-1, 1):                                                                     # 모서리 기둥 (칸 안이 보이게 옆판 대신)
+        for sy_ in (-1, 1):
+            rk.box((0.012, 0.012, rack_h + 0.02), (sx_ * (sl / 2 - 0.006), sy_ * (sw / 2 + 0.006), (rack_h - 0.02) / 2), MAT["frame"])
+    rk.box((0.02, 0.05, 0.03), (sl / 2 + 0.01, 0, rack_h / 2), MAT["steel"])                 # 볼 스크루 너트 블록
+    rack = rk.build(parent=storage, location=(0, 0, bt), bevel=0.0015)
+    for k in range(1, n + 1):
+        slot = empty(f"Storage_Slot_{k:02d}", location=(0, 0, (k - 1) * pitch), parent=rack)
+        slot["level"] = k
+    root["storage_slots"] = n
+    root["storage_pitch"] = pitch
+    root["storage_stroke"] = stroke  # 선반 상하 이동 범위 (three.js 애니메이션)
+    root["storage_x"] = sx
+
+
 # ─────────────────────────────── 실행 ───────────────────────────────
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -537,6 +653,10 @@ def main():
     root["belt_top_m"] = P["belt_top"]
     build_stations(root)
     build_pallets(root)
+    build_zones(root)
+    build_trays(root)
+    build_storage(root)
+    root["zone_x"] = P["zone_x"]
 
     os.makedirs(OUT_DIR, exist_ok=True)
     blend = os.path.join(OUT_DIR, "ev_line_conveyor.blend")

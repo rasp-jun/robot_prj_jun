@@ -12,7 +12,7 @@
 
 ## 명령
 ```powershell
-# 모델 재생성 (Blender 4.2+)
+# 모델 재생성 (Blender 4.2+, 이 PC: C:\Users\user\tools\blender-4.5.14-windows-x64\blender.exe 포터블)
 $env:CONVEYOR_OUT = "$PWD\web\assets"
 blender -b -P blender\conveyor_gen.py
 
@@ -37,6 +37,14 @@ python web\build.py
 | `Status_Ring_ST1`~`3` | 상태 링. 재질이 스테이션별로 분리됨 (RUN 초록 / BUSY 주황 / ERROR 빨강) |
 | `Sensor_ST1`~`3_LED` | 도착 센서 표시등 (재질 공유 → 런타임에서 clone 후 제어) |
 | `Camera_ST2_Light`, `Camera_ST3_Light` | 카메라 링 조명 |
+| `Sensor_CV2_LED`, `Sensor_CV5_LED` | 버퍼·잉여 구간 도착 센서 표시등 (`Sensor_ST#_LED`와 같은 재질 방식) |
+| `Zone_CV1`~`Zone_CV5` | 컨베이어 5구간 경계 빈 오브젝트. extras `cv`, `role`, `x_start`, `x_end` (벨트는 하나, 구간은 논리 분할) |
+| `Tray_Pass`, `Tray_Fail` | ST3 받침대 양옆 합격/불합격 트레이. 전차 자리 `Tray_Pass_Slot_01`~`03` |
+| `Storage` | 보관창고 고정부 (헤드 드럼 너머, 기둥·서보 모터) |
+| `Storage_Rack` | 서보가 상하로 움직이는 3단 선반. 기준점 = 1칸 윗면 중심, 기본 = 1칸이 벨트 높이. k칸을 벨트에 맞추려면 `position.y -= (k-1)*storage_pitch` |
+| `Storage_Slot_01`~`03` | 선반 칸 (`Storage_Rack` 자식, extras `level`). 들어간 팔레트는 여기에 붙인다 |
+
+`EV_Line` extras: `zone_x`(구간 경계), `storage_slots`(3), `storage_pitch`, `storage_stroke`(= (칸 수-1)×칸 간격), `storage_x`.
 
 ## 렌더 스타일 (스튜디오 제품 렌더)
 - 배경·안개 `#e4e7eb`, 바닥 `#dadde2`, RoomEnvironment 환경광 0.75, 그림자 있는 키 라이트 1개 + 보조광 1개
