@@ -107,13 +107,12 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid
 .fps { position: fixed; z-index: 2; left: 8px; top: 4px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* 3D 라벨 */
-.label3d { font-size: 12px; text-align: center; color: var(--ink-2); background: rgba(255,255,255,.72); padding: 2px 8px; border-radius: 999px; white-space: nowrap; pointer-events: none; }
+.label3d { font-size: calc(12px * var(--ui, 1)); text-align: center; color: var(--ink-2); background: rgba(255,255,255,.72); padding: 0.17em 0.67em; border-radius: 999px; white-space: nowrap; pointer-events: none; }
 .label3d b { font-weight: 700; color: var(--ink); }
 
+/* 트윈 화면 오버레이는 1440×900 기준 크기로 그리고, main.js가 화면에 맞춰 --ui(0.65~1.5)를 정한다 */
+body:not(.page) :is(.topbar, .card, .robots, .views, .banner) { zoom: var(--ui, 1); }
 @media (max-width: 1100px) {
-  .headline { width: 280px; }
-  .headline h1 { font-size: 20px; }
-  .robots { width: 240px; }
   .demo { bottom: auto; top: 96px; }
 }
 @media (prefers-reduced-motion: reduce) { #stage, .loading { transition: none; } }

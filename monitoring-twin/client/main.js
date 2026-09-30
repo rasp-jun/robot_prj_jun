@@ -39,6 +39,12 @@ function connect(delay = 500) {
 connect();
 setInterval(tickElapsed, 1000);
 
+// ── 정보 카드 크기: 1440×900 기준으로 화면에 맞춰 확대·축소 (style.css의 zoom: var(--ui)) ──
+const fitUi = () => document.documentElement.style.setProperty("--ui",
+  Math.min(1.5, Math.max(0.65, Math.min(innerWidth / 1440, innerHeight / 900))));
+addEventListener("resize", fitUi);
+fitUi();
+
 // ── 3D: 패널이 뜬 뒤에 불러온다 ──
 import("./twin3d.js")
   .then(async ({ startTwin }) => {
