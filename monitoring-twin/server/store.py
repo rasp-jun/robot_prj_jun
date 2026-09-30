@@ -161,6 +161,10 @@ class Store:
             avg[st] = statistics.fmean(xs) if xs else None
         worked = {k: v for k, v in avg.items() if v is not None}
 
+        # 사이클 타임: 투입(로봇1 첫 BUSY = 하부 차체 투입)부터 공정 완료(로봇3 분류 DONE)까지의 평균. 시작 시각이 없는 가동은 뺀다
+        cyc = [(datetime.fromisoformat(r["finished_at"]) - datetime.fromisoformat(r["started_at"])).total_seconds()
+               for r in runs if r["started_at"]]
+
         lat = sorted(e["rx_epoch"] - e["ts_epoch"] for e in self.events(since, until))
         p95 = lat[min(len(lat) - 1, int(len(lat) * 0.95))] if lat else None
 
@@ -170,6 +174,7 @@ class Store:
             "speed": speed, "speed_unit": speed_unit, "days": len(days),
             **{k: rate(job) for k, job in KPI_JOBS.items()},
             "k3_p95_s": p95, "k3_samples": len(lat),
+            "cycle_s": statistics.fmean(cyc) if cyc else None, "cycle_samples": len(cyc),
             "station_avg_s": avg, "bottleneck": max(worked, key=worked.get) if worked else None,
             "reasons": Counter(r["reason"] or "UNKNOWN" for r in runs if r["ng"]).most_common(),
         }
@@ -205,9 +210,9 @@ class Store:
         elif item == "kpi":
             s = self.stats(since, until)
             w.writerow(["runs", "produced", "fail", "defect_rate_pct", "k1_robot1_pct", "k1_robot2_pct", "k6_weld_pct",
-                        "k3_p95_s", "st1_avg_s", "st2_avg_s", "st3_avg_s", "bottleneck"])
+                        "cycle_avg_s", "k3_p95_s", "st1_avg_s", "st2_avg_s", "st3_avg_s", "bottleneck"])
             w.writerow([s["runs"], s["produced"], s["fail"], s["defect_rate"], s["k1_robot1"]["value"], s["k1_robot2"]["value"],
-                        s["k6_weld"]["value"], s["k3_p95_s"], *s["station_avg_s"].values(), s["bottleneck"]])
+                        s["k6_weld"]["value"], s["cycle_s"], s["k3_p95_s"], *s["station_avg_s"].values(), s["bottleneck"]])
         elif item == "events":
             w.writerow(["rx_epoch", "ts_epoch", "type", "json"])
             for e in self.events(since, until):

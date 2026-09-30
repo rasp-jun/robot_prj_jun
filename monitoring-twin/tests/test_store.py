@@ -74,6 +74,7 @@ def test_stats_kpi():
     assert s["k1_robot2"]["tried"] == 2 and s["k6_weld"]["value"] == 100.0  # 로봇1 오류 가동은 ST2 작업 생략
     assert round(s["k3_p95_s"], 3) == LATENCY
     assert s["station_avg_s"]["ST2"] == 11.0 and s["bottleneck"] == "ST2"
+    assert s["cycle_samples"] == 3 and s["cycle_s"] > s["station_avg_s"]["ST2"]  # 시작→분류 전체 시간
     assert s["reasons"] == [("ROBOT1_ERR", 1)]
     assert s["speed_unit"] == "대/h" and s["speed"] > 0
 

@@ -3,7 +3,7 @@ import { mountHeader, mountSeg, PERIODS, esc } from "./header.js";
 import { setupExport } from "./export.js";
 
 const $ = (id) => document.getElementById(id);
-const TARGET = 95; // K1·K6 목표 (라인 PRD 성공 기준, %)
+const TARGET = 95; // K1 목표 (라인 PRD 성공 기준, %)
 let period = "today";
 
 mountHeader($("topbar"), "통계");
@@ -37,12 +37,14 @@ function card({ label, value, unit, note, kpi }) {
 
 async function load() {
   const s = await (await fetch(`/api/stats?period=${period}`)).json();
-  const kpis = [["로봇1 파워팩 조립 성공률", s.k1_robot1], ["로봇2 포탑 조립 성공률", s.k1_robot2], ["용접 모션 완주율", s.k6_weld]];
+  const kpis = [["로봇1 파워팩 조립 성공률", s.k1_robot1], ["로봇2 포탑 조립 성공률", s.k1_robot2]];
   const perDay = s.speed_unit === "대/일";
   $("cards").innerHTML = [
     card({ label: "생산 (합격)", value: s.produced, unit: "대", note: `가동 ${s.runs}회 중` }),
     card({ label: "불량률", value: fmt(s.defect_rate), unit: "%", note: `불합격 ${s.fail}대` }),
     card({ label: perDay ? "가동일 평균 생산" : "시간당 생산", value: fmt(s.speed), unit: s.speed_unit, note: perDay ? `가동일 ${s.days}일` : "첫 가동 시작부터" }),
+    card({ label: "사이클 타임", value: fmt(s.cycle_s), unit: "s",
+      note: s.cycle_samples ? `투입→공정 완료 평균 · ${["ST1", "ST2", "ST3"].map((st) => `${st} ${fmt(s.station_avg_s[st])}`).join(" · ")} s` : "가동 없음" }),
     ...kpis.map(([label, k]) => card({ label, value: fmt(k.value), unit: "%", note: k.tried ? `${k.done}/${k.tried} 성공` : "시도 없음", kpi: k })),
   ].join("");
 
@@ -55,7 +57,7 @@ async function load() {
   ].map(([l, v, n]) => `<div class="fact"><span class="muted">${l}</span><b>${esc(v)}</b><span class="muted small">${n}</span></div>`).join("");
 
   const judged = [...kpis.map(([, k]) => judge(k.value).tone), s.k3_p95_s == null ? "none" : k3ok ? "ok" : "bad"];
-  $("goal").innerHTML = `<b class="t-ok">목표 달성 ${judged.filter((t) => t === "ok").length}</b> · <b class="t-warn">근접 ${judged.filter((t) => t === "warn").length}</b> / 4개`;
+  $("goal").innerHTML = `<b class="t-ok">목표 달성 ${judged.filter((t) => t === "ok").length}</b> · <b class="t-warn">근접 ${judged.filter((t) => t === "warn").length}</b> / ${judged.length}개`;
   $("range").textContent = { today: `${new Date().toLocaleDateString("en-CA")} 오늘`, week: "오늘 포함 최근 7일", all: "전체 기록" }[period];
 }
 
