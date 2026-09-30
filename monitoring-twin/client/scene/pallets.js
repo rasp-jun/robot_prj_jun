@@ -118,7 +118,7 @@ export function createPallets(lineInfo, manifest) {
   const rackMove = { from: rackY0, to: rackY0, t: 1 };
 
   const live = new Map(); // id → { obj, cv, move:{x0,x1,t} }
-  const leaving = []; // 잉여 구간에서 보관창고로 들어가는 팔레트
+  const leaving = []; // 회수 구간에서 보관창고로 들어가는 팔레트
 
   function update(s) {
     const seen = new Set();
@@ -165,7 +165,7 @@ export function createPallets(lineInfo, manifest) {
     for (const c of s.conveyors) {
       if (leds[c.cv]) leds[c.cv].emissiveIntensity = c.state === "EMPTY" ? 0.08 : 3.2;
       const z = zones[c.cv];
-      if (zoneLabels[c.cv]) zoneLabels[c.cv].innerHTML = `<b>CV${c.cv}</b> ${z.role === "BUFFER" ? "버퍼" : z.role === "SURPLUS" ? "잉여" : z.role} · ${c.state}`;
+      if (zoneLabels[c.cv]) zoneLabels[c.cv].innerHTML = `<b>CV${c.cv}</b> ${z.role === "BUFFER" ? "버퍼" : z.role === "SURPLUS" ? "회수" : z.role} · ${c.state}`;
     }
   }
 

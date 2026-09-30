@@ -41,7 +41,7 @@ python web\build.py
 | `Status_Ring_ST1`~`3` | 상태 링. 재질이 스테이션별로 분리됨 (RUN 초록 / BUSY 주황 / ERROR 빨강) |
 | `Sensor_ST1`~`3_LED` | 도착 센서 표시등 (재질 공유 → 런타임에서 clone 후 제어) |
 | `Camera_ST2_Light`, `Camera_ST3_Light` | 카메라 링 조명 |
-| `Sensor_CV2_LED`, `Sensor_CV5_LED` | 버퍼·잉여 구간 도착 센서 표시등 (`Sensor_ST#_LED`와 같은 재질 방식) |
+| `Sensor_CV2_LED`, `Sensor_CV5_LED` | 버퍼·회수 구간 도착 센서 표시등 (`Sensor_ST#_LED`와 같은 재질 방식) |
 | `Zone_CV1`~`Zone_CV5` | 컨베이어 5구간 경계 빈 오브젝트. extras `cv`, `role`, `x_start`, `x_end` (벨트는 하나, 구간은 논리 분할) |
 | `Tray_Pass`, `Tray_Fail` | ST3 받침대 양옆 합격/불합격 트레이. 전차 자리 `Tray_Pass_Slot_01`~`03` |
 | `Storage` | 보관창고 고정부 (헤드 드럼 너머, 기둥·서보 모터) |

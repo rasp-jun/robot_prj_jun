@@ -24,7 +24,7 @@ EV 모형 생산 라인 — 컨베이어 스테이션 에셋 생성 (Blender 4.2
   Status_Ring_ST1~3        스테이션 상태 링 (재질 개별)
   Sensor_ST1~3_LED         팔레트 도착 센서 표시등
   Camera_ST2/ST3_Light     카메라 링 조명
-  Sensor_CV2_LED, Sensor_CV5_LED  버퍼·잉여 구간 도착 센서 표시등
+  Sensor_CV2_LED, Sensor_CV5_LED  버퍼·회수 구간 도착 센서 표시등
   Zone_CV1 ~ Zone_CV5      구간 경계 빈 오브젝트 (extras: cv, role, x_start, x_end)
   Tray_Pass / Tray_Fail    합격/불합격 트레이 (ST3 받침대 양옆). 전차 자리 = Tray_*_Slot_01~03
   Storage                  보관창고 고정부 (기둥, 서보 모터)
@@ -65,9 +65,9 @@ P = dict(
     return_r=0.015,        # 리턴 롤러 반지름
     return_pitch=0.38,
     belt_tile=0.25,        # 벨트 텍스처 반복 길이 (근사값, 이음매 없게 자동 보정)
-    # 컨베이어 5구간 경계 x (CV1 ST1 | CV2 버퍼 | CV3 ST2 | CV4 ST3 | CV5 잉여). 벨트는 하나, 구간은 논리 분할
+    # 컨베이어 5구간 경계 x (CV1 ST1 | CV2 버퍼 | CV3 ST2 | CV4 ST3 | CV5 회수). 벨트는 하나, 구간은 논리 분할
     zone_x=[-1.9, -0.825, -0.275, 0.55, 1.4, 1.9],
-    zone_sensor_cv=[2, 5],  # 스테이션 외에 도착 센서를 다는 구간 (버퍼, 잉여)
+    zone_sensor_cv=[2, 5],  # 스테이션 외에 도착 센서를 다는 구간 (버퍼, 회수)
     cameras=[2, 3],         # 카메라 스탠드를 세울 스테이션 (라인 PRD P0은 ST3만, 디자인팀 확인 전까지 유지)
     # 합격/불합격 트레이 (ST3 로봇 받침대 양옆)
     tray_dx=0.38,           # ST3 중심에서 트레이 중심까지 x 거리 (불합격 -, 합격 +). ST3 카메라 스탠드와 간섭 없게
@@ -461,7 +461,7 @@ def build_conveyor(root):
                   (0, s * (g_in + P["guide_w"] / 2), RAIL_TOP + P["guide_h"] / 2), MAT["guide"])
     guide.build(parent=conv, bevel=0.0012)
 
-    # 도착 센서 (앞 레일) + 반사판 (뒤 레일): 스테이션 3곳 + 버퍼·잉여 구간
+    # 도착 센서 (앞 레일) + 반사판 (뒤 레일): 스테이션 3곳 + 버퍼·회수 구간
     refl = Part("Conveyor_Reflectors")
     targets = [(f"Sensor_ST{i}", sx) for i, sx in enumerate(P["station_x"], 1)]
     targets += [(f"Sensor_CV{cv}", zone_center(cv)) for cv in P["zone_sensor_cv"]]

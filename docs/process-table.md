@@ -27,7 +27,7 @@ Tank Smart Factory Process Plan · Vision-Guided Welding Trajectory 포함
 
 ## 라인 배치 (PRD 기준)
 
-표기는 PRD와 같습니다. 컨베이어는 ST1 → 버퍼 → ST2 → ST3 → 잉여 5구간이고, 작업 위치는 ST1·ST2·ST3 세 곳입니다. 잉여 구간은 팔레트 보관창고입니다. 로봇은 Indy7 3대(로봇1·로봇2·로봇3)이고, P0의 비전 카메라는 ST3에 1대입니다. 제품 ID는 부여하지 않고 팔레트 단위로 추적합니다. "범위" 열의 P0/P1은 구현 단계(P0 = 핵심, P1 = 추가)입니다.
+표기는 PRD와 같습니다. 컨베이어는 ST1 → 버퍼 → ST2 → ST3 → 회수 5구간이고, 작업 위치는 ST1·ST2·ST3 세 곳입니다. 회수 구간은 팔레트 보관창고입니다. 로봇은 Indy7 3대(로봇1·로봇2·로봇3)이고, P0의 비전 카메라는 ST3에 1대입니다. 제품 ID는 부여하지 않고 팔레트 단위로 추적합니다. "범위" 열의 P0/P1은 구현 단계(P0 = 핵심, P1 = 추가)입니다.
 
 | 공정 | 범위 | 위치 | 수행 | PRD 항목 | 비고 |
 | --- | --- | --- | --- | --- | --- |
@@ -48,7 +48,7 @@ Tank Smart Factory Process Plan · Vision-Guided Welding Trajectory 포함
 | 15 Robotic Welding Simulation | P0 | ST2 | 로봇2 (파지 툴) | P0-8 | 교시한 고정 경로를 따라 이동 |
 | 16 Weld Path Inspection | 제외 | - | - | - | |
 | 17 PASS / RETRY | 제외 | - | - | - | 합격/불합격 판정은 공정 10에서 |
-| 18 Traceability / Roll-Out | P0 | ST3, 잉여 구간 | 로봇3, PLC | P0-12, P0-13 | 로봇3가 트레이로 분류, 팔레트는 보관창고로. 기록은 가동 순번 (제품 ID 없음) |
+| 18 Traceability / Roll-Out | P0 | ST3, 회수 구간 | 로봇3, PLC | P0-12, P0-13 | 로봇3가 트레이로 분류, 팔레트는 보관창고로. 기록은 가동 순번 (제품 ID 없음) |
 
 ## 표와 다르게 처리한 점
 

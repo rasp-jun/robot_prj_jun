@@ -15,7 +15,7 @@
     { "id": "robot1", "type": "backend", "label": "로봇1 · ST1", "sublabel": "차체 투입·파워팩 조립", "pos": [420, 110], "size": [150, 64], "tag": "Indy7" },
     { "id": "robot2", "type": "backend", "label": "로봇2 · ST2", "sublabel": "포탑 조립·용접 모션", "pos": [600, 110], "size": [150, 64], "tag": "Indy7" },
     { "id": "robot3", "type": "backend", "label": "로봇3 · ST3", "sublabel": "합격/불합격 분류", "pos": [780, 110], "size": [150, 64], "tag": "Indy7" },
-    { "id": "conveyor", "type": "external", "label": "컨베이어 5구간", "sublabel": "ST1→버퍼→ST2→ST3→잉여", "pos": [320, 520], "size": [150, 64] },
+    { "id": "conveyor", "type": "external", "label": "컨베이어 5구간", "sublabel": "ST1→버퍼→ST2→ST3→회수", "pos": [320, 520], "size": [150, 64] },
     { "id": "estop", "type": "security", "label": "비상정지", "sublabel": "하드웨어 버튼", "pos": [60, 520], "size": [150, 64] },
     { "id": "vision", "type": "backend", "label": "비전 최종 검증", "sublabel": "ST3 고정 카메라 1대", "pos": [600, 520], "size": [150, 64] },
     { "id": "log", "type": "database", "label": "판정·사이클 로그", "sublabel": "가동 순번·NG 사유", "pos": [880, 520], "size": [150, 64] }
@@ -39,7 +39,7 @@
   ],
   "cards": [
     { "dot": "cyan", "title": "작업 핸드셰이크", "items": ["PLC REQ → 게이트웨이 → Indy7 지시", "응답 BUSY / DONE / ERR", "컨트롤박스 3대는 서로 모름 → 인터록은 PLC"] },
-    { "dot": "emerald", "title": "판정 흐름", "items": ["ST1·ST2 ERR 시 이후 작업 생략 (NG)", "ST3 비전 결과로 PLC가 합격/불합격 확정", "로봇3가 트레이 분류, 팔레트는 잉여 구간 보관"] },
+    { "dot": "emerald", "title": "판정 흐름", "items": ["ST1·ST2 ERR 시 이후 작업 생략 (NG)", "ST3 비전 결과로 PLC가 합격/불합격 확정", "로봇3가 트레이 분류, 팔레트는 회수 구간 보관"] },
     { "dot": "rose", "title": "안전·확장", "items": ["비상정지는 로봇·컨베이어를 소프트웨어와 무관하게 정지", "P1: BLE PCB 모듈 → 게이트웨이(bleak) 수신"] }
   ]
 }
