@@ -1,0 +1,85 @@
+{
+ "name": "link_lost",
+ "description": "로봇3 연결 끊김·복구 → PLC 연결 끊김·복구 → 게이트웨이 이벤트 4초 중단(끊김 감지) → 재연결",
+ "heartbeat_ms": 1000,
+ "steps": [
+  {
+   "after_ms": 0,
+   "event": {
+    "type": "link",
+    "plc": true,
+    "robots": [
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "after_ms": 500,
+   "event": {
+    "type": "line",
+    "state": "RUN"
+   }
+  },
+  {
+   "after_ms": 2000,
+   "event": {
+    "type": "link",
+    "robots": [
+     true,
+     true,
+     false
+    ]
+   }
+  },
+  {
+   "after_ms": 4000,
+   "event": {
+    "type": "link",
+    "robots": [
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "after_ms": 2000,
+   "event": {
+    "type": "link",
+    "plc": false
+   }
+  },
+  {
+   "after_ms": 4000,
+   "event": {
+    "type": "link",
+    "plc": true
+   }
+  },
+  {
+   "after_ms": 2000,
+   "silence_ms": 4000
+  },
+  {
+   "after_ms": 0,
+   "event": {
+    "type": "link",
+    "plc": true,
+    "robots": [
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "after_ms": 2000,
+   "event": {
+    "type": "line",
+    "state": "STOP"
+   }
+  }
+ ]
+}

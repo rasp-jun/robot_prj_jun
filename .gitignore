@@ -7,3 +7,7 @@ web/conveyor_local.html
 
 __pycache__/
 .omc/
+
+# monitoring-twin 가상환경·테스트 캐시
+.venv/
+.pytest_cache/

@@ -1,0 +1,272 @@
+{
+ "name": "robot1_err",
+ "description": "로봇1 파워팩 조립 중 ERR → NG·이후 작업 생략 → ST3 불합격 → 불합격 트레이 → 보관창고",
+ "heartbeat_ms": 1000,
+ "steps": [
+  {
+   "after_ms": 0,
+   "event": {
+    "type": "link",
+    "plc": true,
+    "robots": [
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "after_ms": 500,
+   "event": {
+    "type": "line",
+    "state": "RUN"
+   }
+  },
+  {
+   "after_ms": 500,
+   "event": {
+    "type": "conveyor",
+    "cv": 1,
+    "state": "ARRIVING"
+   }
+  },
+  {
+   "after_ms": 1000,
+   "event": {
+    "type": "conveyor",
+    "cv": 1,
+    "state": "HOLD"
+   }
+  },
+  {
+   "after_ms": 400,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "BUSY",
+    "job": "ROBOT1_HULL_PLACE"
+   }
+  },
+  {
+   "after_ms": 3000,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "DONE",
+    "job": "ROBOT1_HULL_PLACE"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "READY"
+   }
+  },
+  {
+   "after_ms": 400,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "BUSY",
+    "job": "ROBOT1_POWERPACK_MOUNT"
+   }
+  },
+  {
+   "after_ms": 2500,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "ERR",
+    "job": "ROBOT1_POWERPACK_MOUNT"
+   }
+  },
+  {
+   "after_ms": 4000,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "READY"
+   }
+  },
+  {
+   "after_ms": 800,
+   "event": {
+    "type": "conveyor",
+    "cv": 1,
+    "state": "DEPARTING"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 2,
+    "state": "ARRIVING"
+   }
+  },
+  {
+   "after_ms": 1200,
+   "event": {
+    "type": "conveyor",
+    "cv": 1,
+    "state": "EMPTY"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 2,
+    "state": "HOLD"
+   }
+  },
+  {
+   "after_ms": 1500,
+   "event": {
+    "type": "conveyor",
+    "cv": 2,
+    "state": "DEPARTING"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 3,
+    "state": "ARRIVING"
+   }
+  },
+  {
+   "after_ms": 1200,
+   "event": {
+    "type": "conveyor",
+    "cv": 2,
+    "state": "EMPTY"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 3,
+    "state": "HOLD"
+   }
+  },
+  {
+   "after_ms": 1000,
+   "event": {
+    "type": "conveyor",
+    "cv": 3,
+    "state": "DEPARTING"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 4,
+    "state": "ARRIVING"
+   }
+  },
+  {
+   "after_ms": 1200,
+   "event": {
+    "type": "conveyor",
+    "cv": 3,
+    "state": "EMPTY"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 4,
+    "state": "HOLD"
+   }
+  },
+  {
+   "after_ms": 2000,
+   "event": {
+    "type": "result",
+    "run_no": 1,
+    "ng": true,
+    "reason": "ROBOT1_ERR"
+   }
+  },
+  {
+   "after_ms": 400,
+   "event": {
+    "type": "robot",
+    "robot": 3,
+    "state": "BUSY",
+    "job": "ROBOT3_SORT"
+   }
+  },
+  {
+   "after_ms": 4000,
+   "event": {
+    "type": "robot",
+    "robot": 3,
+    "state": "DONE",
+    "job": "ROBOT3_SORT"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "robot",
+    "robot": 3,
+    "state": "READY"
+   }
+  },
+  {
+   "after_ms": 800,
+   "event": {
+    "type": "conveyor",
+    "cv": 4,
+    "state": "DEPARTING"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 5,
+    "state": "ARRIVING"
+   }
+  },
+  {
+   "after_ms": 1200,
+   "event": {
+    "type": "conveyor",
+    "cv": 4,
+    "state": "EMPTY"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "conveyor",
+    "cv": 5,
+    "state": "HOLD"
+   }
+  },
+  {
+   "after_ms": 1500,
+   "event": {
+    "type": "conveyor",
+    "cv": 5,
+    "state": "EMPTY"
+   }
+  },
+  {
+   "after_ms": 1000,
+   "event": {
+    "type": "line",
+    "state": "STOP"
+   }
+  }
+ ]
+}

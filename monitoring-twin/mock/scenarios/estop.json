@@ -1,0 +1,96 @@
+{
+ "name": "estop",
+ "description": "가동 중 비상정지 → 적색 배너·알람 → 복귀(해제 시각 기록) → 작업 재개",
+ "heartbeat_ms": 1000,
+ "steps": [
+  {
+   "after_ms": 0,
+   "event": {
+    "type": "link",
+    "plc": true,
+    "robots": [
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "after_ms": 500,
+   "event": {
+    "type": "line",
+    "state": "RUN"
+   }
+  },
+  {
+   "after_ms": 500,
+   "event": {
+    "type": "conveyor",
+    "cv": 1,
+    "state": "ARRIVING"
+   }
+  },
+  {
+   "after_ms": 1000,
+   "event": {
+    "type": "conveyor",
+    "cv": 1,
+    "state": "HOLD"
+   }
+  },
+  {
+   "after_ms": 400,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "BUSY",
+    "job": "ROBOT1_HULL_PLACE"
+   }
+  },
+  {
+   "after_ms": 1500,
+   "event": {
+    "type": "line",
+    "state": "ESTOP"
+   }
+  },
+  {
+   "after_ms": 5000,
+   "event": {
+    "type": "line",
+    "state": "STOP"
+   }
+  },
+  {
+   "after_ms": 2000,
+   "event": {
+    "type": "line",
+    "state": "RUN"
+   }
+  },
+  {
+   "after_ms": 1500,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "DONE",
+    "job": "ROBOT1_HULL_PLACE"
+   }
+  },
+  {
+   "after_ms": 300,
+   "event": {
+    "type": "robot",
+    "robot": 1,
+    "state": "READY"
+   }
+  },
+  {
+   "after_ms": 1000,
+   "event": {
+    "type": "line",
+    "state": "STOP"
+   }
+  }
+ ]
+}
