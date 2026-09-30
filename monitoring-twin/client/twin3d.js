@@ -6,18 +6,6 @@ import { createPallets } from "./scene/pallets.js";
 
 export async function startTwin(container) {
   const stage = createStage(container);
-  // 화질: 기본은 가볍게. 고품질 선택은 이 브라우저에만 기억 (저장 실패해도 동작에는 영향 없음)
-  const hq = document.getElementById("hq");
-  const applyHq = (on) => { hq.setAttribute("aria-pressed", String(on)); stage.setQuality(on ? "high" : "low"); };
-  let saved = false;
-  try { saved = localStorage.getItem("twin.hq") === "1"; } catch {}
-  applyHq(saved);
-  hq.addEventListener("click", () => {
-    const on = hq.getAttribute("aria-pressed") !== "true";
-    applyHq(on);
-    try { localStorage.setItem("twin.hq", on ? "1" : "0"); } catch {}
-  });
-
   const views = [...document.querySelectorAll(".views button[data-view]")];
   views.forEach((b) => b.addEventListener("click", () => {
     views.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));

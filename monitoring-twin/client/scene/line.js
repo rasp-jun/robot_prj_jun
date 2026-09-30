@@ -1,14 +1,10 @@
-// 렌더러·조명·후처리·카메라 시점 + 라인 GLB 불러오기.
-// 렌더 스타일은 루트 CLAUDE.md "렌더 스타일"과 web/preview_src.html을 그대로 따른다.
+// 렌더러·조명·카메라 시점 + 라인 GLB 불러오기.
+// 조명·톤매핑·바닥은 루트 CLAUDE.md "렌더 스타일"을 따르되, 모니터링 화면은 가볍게 돌아야 해서
+// 후처리(GTAO·Bloom)는 쓰지 않는다 (2026-09-30 결정: 버벅임).
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 
 const STUDIO = new THREE.Color("#e4e7eb");
@@ -20,14 +16,9 @@ const VIEWS = {
   free: { pos: [-2.8, 2.6, 4.8], tgt: [0.4, 0.62, -0.1] },
 };
 
-// 화질: 기본은 가볍게(후처리 없음). 고품질이면 GTAO·Bloom·고해상도 그림자·픽셀 배율 2
-const QUALITY = {
-  low: { post: false, pixelRatio: 1.25, shadow: 1024 },
-  high: { post: true, pixelRatio: 2, shadow: 2048 },
-};
-
 export function createStage(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.shadowMap.enabled = true;
@@ -56,6 +47,7 @@ export function createStage(container) {
   const key = new THREE.DirectionalLight(0xffffff, 2.2);
   key.position.set(-2.4, 4.2, 3.0);
   key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -3.4, right: 3.4, top: 2.4, bottom: -2.4, near: 0.5, far: 12 });
   key.shadow.bias = -0.0002;
   key.shadow.normalBias = 0.012;
@@ -71,30 +63,6 @@ export function createStage(container) {
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
-
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
-  gtao.updateGtaoMaterial({ radius: 0.12, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 16 });
-  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
-  gtao.blendIntensity = 0.85;
-  composer.addPass(gtao);
-  // 임계값 1.6: 낮추면 바닥까지 번져 화면이 뿌옇게 된다 (루트 CLAUDE.md)
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.4, 1.6));
-  composer.addPass(new OutputPass());
-
-  let q = QUALITY.low;
-  function setQuality(name) {
-    q = QUALITY[name];
-    renderer.setPixelRatio(Math.min(devicePixelRatio, q.pixelRatio));
-    renderer.setSize(innerWidth, innerHeight);
-    composer.setPixelRatio(renderer.getPixelRatio());
-    composer.setSize(innerWidth, innerHeight);
-    key.shadow.mapSize.set(q.shadow, q.shadow);
-    key.shadow.map?.dispose();
-    key.shadow.map = null; // 다음 프레임에 새 해상도로 다시 만든다
-  }
-  setQuality("low");
 
   let fly = null;
   function setView(name, instant = false) {
@@ -114,7 +82,6 @@ export function createStage(container) {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
-    composer.setSize(innerWidth, innerHeight);
     labels.setSize(innerWidth, innerHeight);
   });
 
@@ -127,12 +94,11 @@ export function createStage(container) {
       if (fly.t >= 1) fly = null;
     }
     controls.update();
-    if (q.post) composer.render();
-    else renderer.render(scene, camera);
+    renderer.render(scene, camera);
     labels.render(scene, camera);
   }
 
-  return { scene, camera, renderer, controls, setView, setQuality, render, onUserOrbit: (fn) => controls.addEventListener("start", () => { fly = null; fn(); }) };
+  return { scene, camera, renderer, controls, setView, render, onUserOrbit: (fn) => controls.addEventListener("start", () => { fly = null; fn(); }) };
 }
 
 export async function loadLine(url) {
