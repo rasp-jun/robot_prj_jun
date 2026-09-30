@@ -11,7 +11,7 @@ TS = "2026-09-30T09:00:00+09:00"
 
 @pytest.fixture
 def client():
-    app = create_app(source="none")
+    app = create_app(source="none", db_path=":memory:")
     with TestClient(app) as c:
         c.server = app.state.server
         yield c
@@ -60,7 +60,7 @@ def test_mock_endpoints_absent_without_mock_source(client):
 
 
 def test_mock_play_over_http_and_ws():
-    app = create_app(source="mock")  # 시작 시 MT_SCENARIO를 1배속으로 재생
+    app = create_app(source="mock", db_path=":memory:")  # 시작 시 MT_SCENARIO를 1배속으로 재생
     with TestClient(app) as c:
         assert c.get("/api/mock/scenarios").json() == ["estop", "link_lost", "normal", "robot1_err"]
         assert c.post("/api/mock/play", json={"scenario": "nope"}).status_code == 404

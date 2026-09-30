@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Callable, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
@@ -24,6 +24,7 @@ from mock import replay
 from . import config
 from .schema import parse_event
 from .snapshot import Snapshot
+from .store import Store, period_range
 from .ws import Hub
 
 log = logging.getLogger(__name__)
@@ -35,8 +36,9 @@ class LineServer:
     TODO(미정): 게이트웨이를 같은 프로세스로 둘지. 지금은 같은 이벤트 루프에서 ingest()를 await 한다.
     """
 
-    def __init__(self, clock: Callable[[], datetime] = config.local_now) -> None:
+    def __init__(self, clock: Callable[[], datetime] = config.local_now, store: Optional[Store] = None) -> None:
         self.clock = clock
+        self.store = store or Store()
         self.snapshot = Snapshot()
         self.hub = Hub()
         self._lock = asyncio.Lock()  # 적용·방송 순서를 seq 순서로 고정
@@ -56,13 +58,18 @@ class LineServer:
             log.warning("rejected event %r: %s", raw, e.errors(include_url=False))
             return False
         async with self._lock:
-            self.snapshot.apply(ev, self.clock())
-            await self.hub.broadcast(self.message(ev.model_dump(mode="json", exclude_none=True)))
+            now = self.clock()
+            self.snapshot.apply(ev, now)
+            event = ev.model_dump(mode="json", exclude_none=True)
+            self.store.record(self.snapshot, event, now)
+            await self.hub.broadcast(self.message(event))
         return True
 
     async def check_link(self) -> None:
         async with self._lock:
-            if self.snapshot.check_gateway(self.clock(), config.LINK_TIMEOUT_S):
+            now = self.clock()
+            if self.snapshot.check_gateway(now, config.LINK_TIMEOUT_S):
+                self.store.record(self.snapshot, None, now)
                 await self.hub.broadcast(self.message(None))
 
     async def watch_link(self, interval_s: float = 0.25) -> None:
@@ -89,6 +96,10 @@ class LineServer:
     async def play(self, name: str, speed: float, reset: bool = True) -> None:
         """재생 중인 시나리오를 멈추고 새로 재생한다 (백그라운드)."""
         scenario = replay.load(name)
+        # 시나리오의 가동 순번은 1로 고정이라, 기록이 겹치지 않게 저장된 마지막 순번 다음으로 바꾼다
+        for step in scenario["steps"]:
+            if step.get("event", {}).get("type") == "result":
+                step["event"]["run_no"] = self.store.next_run_no()
         self.stop_mock()
         if reset:
             await self.reset()
@@ -115,8 +126,12 @@ class MockPlay(BaseModel):
     reset: bool = True
 
 
-def create_app(source: str = config.SOURCE) -> FastAPI:
-    server = LineServer()
+EXPORT_ITEMS = ("runs", "alarms", "kpi", "events")
+Period = Query("today", pattern="^(today|week|all)$")
+
+
+def create_app(source: str = config.SOURCE, db_path=config.DB_PATH) -> FastAPI:
+    server = LineServer(store=Store(db_path))
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -133,6 +148,37 @@ def create_app(source: str = config.SOURCE) -> FastAPI:
     @app.get("/api/snapshot")
     def get_snapshot() -> dict:
         return server.snapshot.to_dict()
+
+    # ---- 기록·통계·내보내기 (W0-5·6·7) ----
+
+    def rng(period: str) -> tuple[float, float]:
+        return period_range(period, server.clock())
+
+    @app.get("/api/stats")
+    def get_stats(period: str = Period) -> dict:
+        return server.store.stats(*rng(period))
+
+    @app.get("/api/runs")
+    def get_runs(period: str = Period, verdict: str = Query("all", pattern="^(all|ok|ng)$"),
+                 limit: int = Query(200, ge=1, le=5000)) -> list[dict]:
+        return server.store.runs(*rng(period), verdict=verdict, limit=limit)
+
+    @app.get("/api/alarms")
+    def get_alarms(period: str = Period, limit: int = Query(500, ge=1, le=5000)) -> list[dict]:
+        return server.store.alarms(*rng(period), limit=limit)
+
+    @app.get("/api/export/preview")
+    def export_preview(period: str = Period) -> dict:
+        return server.store.counts(*rng(period))
+
+    @app.get("/api/export")
+    def export(period: str = Period, items: str = "runs,alarms") -> Response:
+        chosen = [i for i in items.split(",") if i]
+        if not chosen or any(i not in EXPORT_ITEMS for i in chosen):
+            raise HTTPException(400, f"items must be a subset of {EXPORT_ITEMS}")
+        tag = {"today": server.clock().strftime("%Y-%m-%d"), "week": "7days", "all": "all"}[period]
+        name, data, mime = server.store.export(chosen, *rng(period), tag)
+        return Response(data, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
     if source == "mock":
         # 개발·시연 전용. PLC·로봇에 쓰지 않으므로 P0 읽기 전용 원칙과 무관하다

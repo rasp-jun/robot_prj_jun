@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>생산 통계 · 모니터링 트윈</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body class="page">
+<header class="topbar page-top" id="topbar"></header>
+<main class="page-main">
+  <div class="toolbar">
+    <h1>생산 통계</h1>
+    <div class="seg" id="period" role="group" aria-label="기간"></div>
+    <span class="muted small" id="range"></span>
+    <span class="goal" id="goal"></span>
+    <button type="button" class="btn" id="exportBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+      데이터 내보내기
+    </button>
+  </div>
+  <div class="score-grid" id="cards" aria-live="polite"></div>
+  <div class="facts" id="facts"></div>
+</main>
+<script type="module" src="./ui/kpi.js"></script>
+</body>
+</html>

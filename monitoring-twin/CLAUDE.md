@@ -51,14 +51,16 @@
 monitoring-twin/
   CLAUDE.md
   docs/        monitoring-twin-prd.md, monitoring-twin-plan.md
-  server/      main.py, ws.py, snapshot.py, store.py, schema.py, config.py
-  client/      index.html, style.css, main.js (패널·WebSocket 먼저), twin3d.js (3D는 동적 import)
+  server/      main.py, ws.py, snapshot.py, store.py (SQLite), schema.py, config.py
+  client/      index.html (트윈), stats.html (통계), records.html (기록), style.css
+               main.js (패널·WebSocket 먼저), twin3d.js (3D는 동적 import)
                scene/  line.js, pallets.js, robots.js
-               ui/     status.js, alarms.js (M5: runs.js, kpi.js)
+               ui/     status.js, alarms.js (트윈) · kpi.js (통계) · runs.js (기록) · header.js, export.js (공통)
                vendor/ three 0.169.0, urdf-loader 0.12.6
                (서버 경로: / = client, /assets = monitoring-twin/assets, /models = ../web/assets)
   assets/      manifest.json (placeholder 크기·위치, GLB 원본은 ../web/assets/)
-  mock/        replay.py, scenarios/normal.json, robot1_err.json, estop.json, link_lost.json
+  mock/        replay.py, seed.py (예시 데이터), scenarios/normal.json, robot1_err.json, estop.json, link_lost.json
+  data/        monitoring.db (SQLite, git 제외, 환경변수 MT_DB로 경로 변경)
   tests/
 ```
 

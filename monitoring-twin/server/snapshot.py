@@ -46,6 +46,7 @@ class Pallet:
     result_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     times: dict = field(default_factory=lambda: {"ST1": 0.0, "ST2": 0.0, "ST3": 0.0})
+    jobs: dict = field(default_factory=dict)  # 작업 코드 → BUSY/DONE/ERR (K1·K6 성공률 계산용)
 
     def to_dict(self) -> dict:
         return {
@@ -68,6 +69,7 @@ class Pallet:
             "ng": self.ng,
             "reason": self.reason,
             "times": {k: round(v, 3) for k, v in self.times.items()},
+            "jobs": dict(self.jobs),
         }
 
 
@@ -89,6 +91,9 @@ class Snapshot:
         # TODO(미정): 선반 신호(벨트에 맞춘 칸·칸별 적재)가 없어 CV5 EMPTY 횟수로 추정. 화면은 아래 칸부터 채운다
         self.storage = 0
         self.last_run: Optional[Pallet] = None
+        # 저장소(store.py)가 가져갈 변경분: 끝난 가동(분류 완료), 새로 생기거나 해제된 알람
+        self.finished: list[Pallet] = []
+        self.alarm_changes: list[dict] = []
         self._pallet_no = 0
         self._busy_since: dict[int, Optional[datetime]] = {1: None, 2: None, 3: None}
 
@@ -168,6 +173,8 @@ class Snapshot:
             self._busy_since[n] = ev.ts
             if pallet is not None and n == 1 and pallet.started_at is None:
                 pallet.started_at = ev.ts  # 가정: 가동 시작 = 로봇1이 처음 BUSY가 된 시각
+            if pallet is not None and ev.job:
+                pallet.jobs[ev.job] = "BUSY"
         elif ev.state == "DONE":
             since = self._busy_since[n]
             self._busy_since[n] = None
@@ -176,6 +183,8 @@ class Snapshot:
                 return
             if since is not None:
                 pallet.times[f"ST{n}"] += (ev.ts - since).total_seconds()
+            if job:
+                pallet.jobs[job] = "DONE"
             if job in JOB_STAGE:
                 pallet.stage = JOB_STAGE[job]
             elif job == "ROBOT2_WELD_MOTION":
@@ -187,12 +196,14 @@ class Snapshot:
                 pallet.welded = False
                 pallet.finished_at = ev.ts
                 self.last_run = pallet
+                self.finished.append(pallet)
         elif ev.state == "ERR":
             self._busy_since[n] = None
             self._raise_alarm(f"robot{n}", "ERR", f"로봇{n} 오류 ({job or '작업 코드 없음'})", ev.ts)
             if pallet is not None:
                 pallet.ng = True
                 pallet.skip = True
+                pallet.jobs[job or "UNKNOWN"] = "ERR"
                 pallet.reason = pallet.reason or f"ROBOT{n}_ERR"
         elif ev.state == "READY":
             self._busy_since[n] = None
@@ -244,12 +255,14 @@ class Snapshot:
         alarm = {"source": source, "code": code, "msg": msg, "raised_at": ts, "cleared_at": None}
         self.alarms_active[key] = alarm
         self.alarm_history.append(alarm)
+        self.alarm_changes.append(alarm)
         del self.alarm_history[:-HISTORY_MAX]
 
     def _clear_alarm(self, source: str, code: str, ts: datetime) -> None:
         alarm = self.alarms_active.pop((source, code), None)
         if alarm is not None:
             alarm["cleared_at"] = ts
+            self.alarm_changes.append(alarm)
 
     def _pallet_at(self, cv: int) -> Optional[Pallet]:
         return next((p for p in self.pallets if p.cv == cv), None)

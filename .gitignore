@@ -11,3 +11,6 @@ __pycache__/
 # monitoring-twin 가상환경·테스트 캐시
 .venv/
 .pytest_cache/
+
+# monitoring-twin SQLite 데이터
+monitoring-twin/data/

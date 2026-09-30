@@ -116,6 +116,13 @@
 - 완료 조건
     - 연속 가동 30회 동안 표시 불일치 0건, 기록 누락 0건
     - KPI 값이 CSV 손 계산과 일치
+- 2026-09-30 화면·저장 완료 (M4보다 먼저 진행): `server/store.py`(SQLite: runs·alarms·events), `/api/stats·runs·alarms·export`,
+  `client/stats.html`(스코어카드), `client/records.html`(가동 기록·알람 이력), 내보내기 패널(CSV, 여러 항목은 zip).
+  예시 데이터: `python -m mock.seed --days 5 --per-day 40 --reset`. KPI 정의(구현 기준):
+    - K1·K6 = 해당 작업 코드를 시작한 가동 중 DONE 비율 (ERR은 실패). ST3 비전 불합격(TURRET_MISSING 등)은 로봇 실패로 세지 않음
+    - K3 = 서버 수신 시각 - 게이트웨이 ts 의 95번째 백분위 (하트비트 제외)
+    - K5 = 위치별 로봇 BUSY→DONE 합의 평균 (작업 생략 0초 제외)
+  남은 확인: 실제 라인 연속 30회 기록 누락 0건, CSV 손 계산 대조 (M4 이후)
 
 ### M6. GLB 교체와 시연 준비 (5~6주차)
 
