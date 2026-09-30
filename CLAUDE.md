@@ -1,9 +1,13 @@
-# EV 모형 생산 라인 · 모니터링 트윈
+# 전차 모형 조립·검사 라인 · 모니터링 트윈
 
-협동로봇 Indy7 3대 + 컨베이어 1개로 전기차 모형을 조립(ST1)·가공(ST2)·검사(ST3)하는 라인의
-웹 모니터링 트윈. 실물 라인 데이터를 받아 3D로 보여주는 **보기 전용** 트윈이다 (운전 명령 없음).
+협동로봇 Indy7 3대 + 컨베이어 5구간(CV1~CV5)으로 전차(탱크) 모형을 조립(ST1 파워팩)·조립(ST2 포탑·용접 모션)·검사(ST3 비전·분류)하는
+라인의 웹 모니터링 트윈. 실물 라인 데이터를 받아 3D로 보여주는 **보기 전용** 트윈이다 (운전 명령 없음).
+라인 요구사항은 `docs/prd.md`, 웹 앱 작업은 `monitoring-twin/CLAUDE.md`를 따른다. 이 문서와 다르면 그쪽이 우선이다.
 
 ## 폴더
+- `docs/` — 라인 PRD(`prd.md`), 공정표(`process-table.md`), 시스템 블록도, 발표 이미지
+- `monitoring-twin/` — 모니터링 웹 앱 (FastAPI 서버 + three.js 트윈·통계·기록 화면). 작업 지침은 그 폴더의 `CLAUDE.md`
+- `blender/source/` — 디자인팀이 보내 준 전차 모델 원본 (손대지 않고 보관, `README.md` 참고)
 - `blender/conveyor_gen.py` — 컨베이어·받침대·팔레트·카메라 스탠드를 생성하는 Blender 스크립트 (파라메트릭)
 - `web/assets/ev_line_conveyor.glb` — 위 스크립트 결과물 (`.blend`도 같은 폴더)
 - `web/preview_src.html` — three.js 스튜디오 미리보기 원본 (`__GLB_BASE64__`, `__THREE__` 자리표시자)
@@ -47,6 +51,7 @@ python web\build.py
 `EV_Line` extras: `zone_x`(구간 경계), `storage_slots`(3), `storage_pitch`, `storage_stroke`(= (칸 수-1)×칸 간격), `storage_x`.
 
 ## 렌더 스타일 (스튜디오 제품 렌더)
+`web/preview_src.html` 기준. `monitoring-twin`은 가볍게 하려고 후처리(GTAO·Bloom)를 쓰지 않는다 (그 폴더 `CLAUDE.md`).
 - 배경·안개 `#e4e7eb`, 바닥 `#dadde2`, RoomEnvironment 환경광 0.75, 그림자 있는 키 라이트 1개 + 보조광 1개
 - 톤매핑 `NeutralToneMapping`, 후처리: GTAO → UnrealBloom(강도 0.5, 반경 0.4, **임계값 1.6** — 낮추면 바닥까지 번져 화면이 뿌옇게 됨) → OutputPass
 - 프레임 진회색 아노다이징, 벨트 검정 고무, 가이드 오프화이트, 로봇 흰색. 포인트 색은 상태 링과 LED만
@@ -54,7 +59,8 @@ python web\build.py
 
 ## 에셋 제작 원칙
 - 설비(치수·움직임 중요) → 스크립트 모델링
-- 디자인 물체(차체 셸·소품) → Higgsfield 생성 → Blender 정리(스케일, 면 수 감소, 부품 분리, 이름) → GLB
+- 전차 모델 → 디자인팀이 제공 (`blender/source/`) → Blender 정리(스케일, 면 수 감소, 부품 분리, 이름) → GLB
+- 그 밖의 디자인 물체(소품) → Higgsfield 생성 → 같은 Blender 정리 → GLB
 - Indy7 → 기존 three.js(digital_twin2) 로더 재사용
 
 ## Indy7 (preview_src.html)
@@ -63,5 +69,4 @@ python web\build.py
 - 대기 자세 `[0,0,-90,0,-90,0]`, 팔레트 위 작업 자세 `[23,-32,-99,0,-64,0]` (TCP 높이 0.95, 툴 아래 방향)
 
 ## 다음 작업
-1. 실제 GPU에서 인덱싱 데모·fps 확인 (로봇 3대 포함 약 617k 삼각형)
-2. 미리보기를 WebSocket 수신 구조로 전환 (서버가 PLC·로봇 데이터를 모아 송신, 메시지 형식은 PRD의 인터페이스 정의서 기준) — 수신한 q는 `robots[id].setJoints(q)`로, 데모 `stepRobots()`는 제거
+`monitoring-twin/docs/monitoring-twin-plan.md`의 마일스톤을 따른다 (WebSocket 수신 구조는 `monitoring-twin`에서 완료).
