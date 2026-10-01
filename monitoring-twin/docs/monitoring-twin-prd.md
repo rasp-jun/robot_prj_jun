@@ -82,7 +82,7 @@
     - 동작: three.js로 GLB를 불러와 컨베이어 5구간, ST1~ST3, 로봇 3대, ST3 카메라, 합격/불합격 트레이, 보관창고를 배치
     - 팔레트: 구간 상태(EMPTY/ARRIVING/HOLD/DEPARTING)에 따라 이동. 센서 사이 구간은 보간 애니메이션
     - 팔레트 위 전차: 진행 단계에 따라 하부 차체 → 파워팩 → 포탑 모델을 차례로 표시
-    - 로봇: 상태 색 READY 회색, BUSY 주황, DONE 초록, ERR 빨강 (루트 `CLAUDE.md`의 GLB 상태 링 색 체계에 READY 회색을 더함). 관절 동기화는 W1-1
+    - 로봇: 상태 색 READY 회색, BUSY 주황, DONE 초록, ERR 빨강 (`.claude/rules/3d-render.md`의 상태 색 체계에 READY 회색을 더함). 관절 동기화는 W1-1
     - 장면 구조: `Line > Conveyor(CV1~CV5) · Stations(ST1~ST3) · Robots(Robot1~3) · Pallets · Trays(Pass, Fail) · Storage`
     - 3D 모델: `../web/assets/ev_line_conveyor.glb`(벨트 1개, 스테이션 x = -1.1 / 0 / 1.1 m)와 Indy7 URDF·STL을 그대로 쓴다. 5구간은 벨트 위 x 좌표로 나눈다 (가정: CV1 -1.1, CV2 -0.55, CV3 0, CV4 1.1, CV5 1.7. 계획 B1 이후에는 GLB의 `Zone_CV#`에서 읽음). 트레이·보관창고는 B1(보관창고 = CV5 끝, 서보가 3단 선반 전체를 상하로 움직여 채울 칸을 벨트 높이에 맞춤. 팔레트가 칸에 들어가면 선반이 다음 빈 칸 높이로 이동하는 애니메이션), 전차 단계별 모델(`Tank_Hull`·`Tank_Powerpack`·`Tank_Turret`)은 B2에서 만들고, 그 전까지는 박스 placeholder
     - 입력: 스냅샷 + 이벤트, `../web/assets/` (GLB 원본은 디자인팀 `blender/conveyor_gen.py`로 재생성, 복사하지 않음)

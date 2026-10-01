@@ -40,7 +40,7 @@
 
 ### B1. Blender 설비 추가 (2주차, M3 앞)
 
-설비는 스크립트로 모델링한다 (루트 `CLAUDE.md` 에셋 원칙). `../blender/conveyor_gen.py`를 고쳐 다시 만든다. 모델 파일은 손으로 고치지 않는다.
+설비는 스크립트로 모델링한다 (`.claude/rules/3d-model.md` 에셋 원칙). `../blender/conveyor_gen.py`를 고쳐 다시 만든다. 모델 파일은 손으로 고치지 않는다.
 
 - Blender 4.2 이상이 이미 설치되어 있으면 그것을 쓰고, 없을 때만 설치 (`winget install BlenderFoundation.Blender`). `blender -b -P blender\conveyor_gen.py`로 재생성
     - 2026-09-30 확인: 이 PC에는 설치되어 있지 않음 (winget·Program Files·AppData·Steam·레지스트리)
@@ -57,7 +57,7 @@
     - `Zone_CV1`~`Zone_CV5`: 구간 경계 빈 오브젝트. custom property `cv`, `x_start`, `x_end` → three.js가 구간 좌표를 여기서 읽음 (하드코딩 없앰)
     - `Sensor_CV2_LED`, `Sensor_CV5_LED`: 버퍼·회수 구간 도착 센서 (기존 `Sensor_ST#_LED`와 같은 재질 방식)
 - 결정 전까지 그대로 두는 것: 전체 치수(`P`), `Camera_ST2` (라인 PRD P0은 ST3 카메라만. `P["cameras"]` 파라미터로 끌 수 있게만 함)
-- 오브젝트 이름은 필요하면 바꿀 수 있다 (사람 승인). 바꾸거나 추가하면 같은 작업에서 루트 `CLAUDE.md` 이름 규칙 표, `conveyor_gen.py` 머리 주석, `web/preview_src.html`의 `getObjectByName` 호출을 함께 고친다
+- 오브젝트 이름은 필요하면 바꿀 수 있다 (사람 승인). 바꾸거나 추가하면 같은 작업에서 `.claude/rules/3d-model.md` 이름 표, `conveyor_gen.py` 머리 주석, `web/preview_src.html`의 `getObjectByName` 호출을 함께 고친다
 - 완료 조건
     - 백그라운드 재생성 성공, 재생성 전후 이름 목록 비교 결과를 보고 (바뀐 이름은 위 세 곳에 모두 반영됨)
     - `python web\build.py` 미리보기가 그대로 동작
@@ -81,7 +81,7 @@
 ### 화면 구성 (2026-09-30 결정)
 
 - 디자인: https://claude.ai/artifact/WmzxDazsgFB4UPNAbfhgLk ("화면 구성" 페이지가 기준)
-- 톤: B 스튜디오 (루트 `CLAUDE.md` 렌더 스타일과 같은 밝은 배경 #e4e7eb, 흰 카드, 제목 Noto Serif KR + 본문 Noto Sans KR). 로봇 상태 색은 READY 회색, BUSY 주황, DONE 초록, ERR 빨강 그대로
+- 톤: B 스튜디오 (`.claude/rules/3d-render.md` 렌더 스타일과 같은 밝은 배경 #e4e7eb, 흰 카드, 제목 Noto Serif KR + 본문 Noto Sans KR). 로봇 상태 색은 READY 회색, BUSY 주황, DONE 초록, ERR 빨강 그대로
 - 페이지 3개, 상단 메뉴로 이동
     1. 트윈 (첫 화면, M3): 공정 트윈 + 가동 중 팔레트 + 알람, 하단에 오늘 생산 요약 → 통계로 링크
     2. 통계 (M5, W0-7): 스코어카드. 생산·불량률·시간당 생산 카드, 사이클 타임 카드, K1(로봇1·2) 목표 대비 카드 (K6 용접 완주율은 2026-09-30 화면에서 뺌, CSV에는 남김), 하단에 K3·병목·불량 원인 1위. 기간 오늘/최근 7일
@@ -91,7 +91,7 @@
 ### M3. 화면 1차: 대시보드 + 3D 트윈 (2~3주차)
 
 - 레이아웃은 위 "화면 구성"의 트윈 페이지: 3D 영역, 상태 패널(W0-4), 알람 패널(W0-5). 통계·기록 메뉴는 M5 전까지 비활성
-- 3D는 `../web/assets/ev_line_conveyor.glb`(B1 반영본) + Indy7 3대(`web/preview_src.html`의 `createIndy7Factory` 재사용). 오브젝트 이름은 루트 `CLAUDE.md` 규칙을 따름
+- 3D는 `../web/assets/ev_line_conveyor.glb`(B1 반영본) + Indy7 3대(`web/preview_src.html`의 `createIndy7Factory` 재사용). 오브젝트 이름은 `.claude/rules/3d-model.md` 규칙을 따름
 - 5구간 좌표는 GLB의 `Zone_CV#`에서 읽음. 전차 단계는 B2 전까지 박스 placeholder (`assets/manifest.json`의 크기 사용)
 - three.js 0.169.0 + urdf-loader 0.12.6을 `client/vendor/`에 로컬 사본으로 둠 (미리보기와 같은 조합, 오프라인 시연)
 - 팔레트 이동·로봇 상태 색(`Status_Ring_ST#`)·NG 표시 (W0-3)

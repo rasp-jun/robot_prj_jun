@@ -1,5 +1,5 @@
 // 렌더러·조명·카메라 시점 + 라인 GLB 불러오기.
-// 조명·톤매핑·바닥은 루트 CLAUDE.md "렌더 스타일"을 따르되, 모니터링 화면은 가볍게 돌아야 해서
+// 조명·톤매핑·바닥은 .claude/rules/3d-render.md "공통 스타일"을 따르되, 모니터링 화면은 가볍게 돌아야 해서
 // 후처리(GTAO·Bloom)는 쓰지 않는다 (2026-09-30 결정: 버벅임).
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
