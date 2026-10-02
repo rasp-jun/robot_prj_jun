@@ -13,13 +13,14 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable, Optional, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
 from mock import replay
+from mock.player import Player
 
 from . import config
 from .schema import parse_event
@@ -43,10 +44,15 @@ class LineServer:
         self.hub = Hub()
         self._lock = asyncio.Lock()  # 적용·방송 순서를 seq 순서로 고정
         self._mock_task: Optional[asyncio.Task] = None
+        self.player: Optional[Player] = None
+        self._play_lock = asyncio.Lock()
+        self._generation = 0
+        self._paused_at = None
 
     def message(self, event: Optional[dict]) -> str:
         return json.dumps(
-            {"seq": self.snapshot.seq, "event": event, "snapshot": self.snapshot.to_dict()},
+            {"seq": self.snapshot.seq, "event": event, "snapshot": self.snapshot.to_dict(),
+             "playback": self.player.metadata() if self.player else None},
             ensure_ascii=False,
         )
 
@@ -67,6 +73,8 @@ class LineServer:
 
     async def check_link(self) -> None:
         async with self._lock:
+            if self.player and self.player.state == "PAUSED":
+                return
             now = self.clock()
             if self.snapshot.check_gateway(now, config.LINK_TIMEOUT_S):
                 self.store.record(self.snapshot, None, now)
@@ -93,27 +101,63 @@ class LineServer:
             self.snapshot.updated_at = self.clock()
             await self.hub.broadcast(self.message(None))
 
-    async def play(self, name: str, speed: float, reset: bool = True) -> None:
+    async def play(self, name: str, speed: float, reset: bool = True, loop: bool = False) -> None:
         """재생 중인 시나리오를 멈추고 새로 재생한다 (백그라운드)."""
-        scenario = replay.load(name)
-        # 시나리오의 가동 순번은 1로 고정이라, 기록이 겹치지 않게 저장된 마지막 순번 다음으로 바꾼다
-        for step in scenario["steps"]:
-            if step.get("event", {}).get("type") == "result":
-                step["event"]["run_no"] = self.store.next_run_no()
-        self.stop_mock()
-        if reset:
+        def prepare():
+            scenario = replay.load(name)
+            run_no = self.store.next_run_no()
+            for step in scenario["steps"]:
+                if step.get("event", {}).get("type") == "result":
+                    step["event"]["run_no"] = run_no
+                    run_no += 1
+            return scenario
+
+        async def restart():
             await self.reset()
+            return prepare()
 
-        async def run() -> None:
-            n = await replay.play(scenario, self.ingest, speed)
-            log.info("mock scenario %s done (%d events)", name, n)
-            # 실제 게이트웨이처럼 끝난 뒤에도 하트비트를 계속 보낸다 (다음 재생 전까지)
-            hb_s = scenario.get("heartbeat_ms", 1000) / 1000
-            while True:
-                await asyncio.sleep(hb_s)
-                await self.ingest({**replay.HEARTBEAT, "ts": self.clock().isoformat()})
+        async with self._play_lock:
+            scenario = prepare()
+            self.stop_mock()
+            if self._mock_task:
+                try:
+                    await self._mock_task
+                except asyncio.CancelledError:
+                    pass
+            self._generation = max(self._generation, self.player.generation if self.player else 0) + 1
+            self.player = Player(name, speed, loop, self._generation, self.ingest, restart)
+            self._paused_at = None
+            if reset:
+                await self.reset()
+            self._mock_task = asyncio.create_task(self.player.run(scenario))
 
-        self._mock_task = asyncio.create_task(run())
+    async def control_mock(self, action, speed=None, loop=None):
+        async with self._play_lock:
+            player = self.player
+            if player is None:
+                raise HTTPException(409, "no demo playback")
+            if action == "pause" and player.state == "PLAYING":
+                self._paused_at = self.clock()
+                player.state = "PAUSED"
+            elif action == "resume" and player.state == "PAUSED":
+                if self._paused_at:
+                    pause_duration = self.clock() - self._paused_at
+                    # Demo transport pause is not robot processing time. Keep wall-clock run timestamps.
+                    for robot, started in self.snapshot._busy_since.items():
+                        if started is not None:
+                            self.snapshot._busy_since[robot] = started + pause_duration
+                if self.snapshot.last_rx and self._paused_at and self.snapshot.last_rx <= self._paused_at:
+                    # Exclude deliberate pause time from the watchdog without reviving a lost link.
+                    self.snapshot.last_rx += self.clock() - self._paused_at
+                player.state = "PLAYING"
+                self._paused_at = None
+            if speed is not None:
+                player.speed = speed
+            if loop is not None:
+                player.loop = loop
+            async with self._lock:
+                await self.hub.broadcast(self.message(None))
+            return player.metadata()
 
     def stop_mock(self) -> None:
         if self._mock_task and not self._mock_task.done():
@@ -124,6 +168,13 @@ class MockPlay(BaseModel):
     scenario: str
     speed: float = Field(default=1.0, gt=0, le=50)
     reset: bool = True
+    loop: bool = False
+
+
+class MockControl(BaseModel):
+    action: Literal["pause", "resume", "configure"]
+    speed: Optional[float] = Field(default=None, gt=0, le=50)
+    loop: Optional[bool] = None
 
 
 EXPORT_ITEMS = ("runs", "alarms", "kpi", "events")
@@ -191,8 +242,16 @@ def create_app(source: str = config.SOURCE, db_path=config.DB_PATH) -> FastAPI:
         async def play_scenario(req: MockPlay) -> dict:
             if req.scenario not in replay.scenario_names():
                 raise HTTPException(404, f"unknown scenario: {req.scenario}")
-            await server.play(req.scenario, req.speed, req.reset)
+            await server.play(req.scenario, req.speed, req.reset, req.loop)
             return {"playing": req.scenario, "speed": req.speed}
+
+        @app.get("/api/mock/status")
+        def mock_status() -> dict:
+            return server.player.metadata() if server.player else {}
+
+        @app.post("/api/mock/control")
+        async def mock_control(req: MockControl) -> dict:
+            return await server.control_mock(req.action, req.speed, req.loop)
 
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket) -> None:

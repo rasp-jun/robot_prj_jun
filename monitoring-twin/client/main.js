@@ -1,73 +1,86 @@
-// 트윈 화면 진입점: /ws로 스냅샷을 받아 패널과 3D를 그린다.
-// 상태 계산은 서버(server/snapshot.py)에만 있고, 여기서는 받은 snapshot을 그대로 그린다.
-// 새로고침 뒤 1초 안에 현장과 맞추려고 패널·WebSocket을 먼저 띄우고, 3D(three.js)는 뒤에서 불러온다.
+// The server owns process state; this module only presents snapshots and mock controls.
 import { renderStatus, tickElapsed } from "./ui/status.js";
 import { renderAlarms } from "./ui/alarms.js";
+import { initPlayback, renderPlayback } from "./ui/playback.js";
 
 const $ = (id) => document.getElementById(id);
-
 let snapshot = null;
 let lastSeq = -1;
 let online = false;
-let twin3d = null; // 3D를 다 불러온 뒤 채워짐 (twin3d.js)
+let twin3d = null;
+let playback = null;
 
 function draw(event) {
   if (!snapshot) return;
-  renderStatus(snapshot, { online });
+  renderSceneStatus();
   renderAlarms(snapshot);
-  twin3d?.update(snapshot, event);
+  renderPlayback(playback, online);
+  twin3d?.update(snapshot, event, { online, playback });
+  renderSceneStatus();
 }
 
-// ── WebSocket: 끊기면 바로 회색 처리, 지수 백오프로 재접속, 재접속하면 첫 메시지(스냅샷)로 다시 그림 ──
+function renderSceneStatus(){
+  if(!snapshot)return;
+  const shown=playback?twin3d?.presentation():null;
+  // In demo mode cards follow the displayed sequence; faults/links remain immediate.
+  const s=shown?{...shown,updated_at:snapshot.updated_at,link:snapshot.link,alarms_active:snapshot.alarms_active,
+    line:['ESTOP','PAUSE'].includes(snapshot.line.state)?snapshot.line:shown.line,
+    robots:shown.robots.map(r=>snapshot.robots.find(n=>n.robot===r.robot)?.state==='ERR'?snapshot.robots.find(n=>n.robot===r.robot):r)}:snapshot;
+  renderStatus(s,{online,playback});
+}
+
+function showDisconnected() {
+  online = false;
+  if (snapshot) return draw(null);
+  $("headline").textContent = "서버에 연결할 수 없습니다. 자동으로 다시 연결합니다.";
+  $("linePill").textContent = "연결 대기";
+  $("syncNote").textContent = "서버 연결 복구 대기";
+  $("banner").dataset.kind = "offline";
+  $("banner").textContent = "서버 연결 대기 · 수신된 공정 데이터가 없습니다";
+  $("banner").hidden = false;
+  document.body.classList.add("stale");
+}
+
 function connect(delay = 500) {
   const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
   ws.onopen = () => { delay = 500; };
   ws.onmessage = (m) => {
     const msg = JSON.parse(m.data);
-    // event가 null이면 접속 직후·초기화·서버 재시작 스냅샷이므로 seq와 관계없이 받는다
     if (msg.event !== null && msg.seq <= lastSeq) return;
     lastSeq = msg.seq;
     online = true;
     snapshot = msg.snapshot;
+    playback = msg.playback ?? null;
     draw(msg.event);
   };
   ws.onclose = () => {
-    if (online) { online = false; draw(null); }
+    showDisconnected();
     setTimeout(() => connect(Math.min(delay * 2, 5000)), delay);
   };
+  ws.onerror = () => ws.close();
 }
 connect();
 setInterval(tickElapsed, 1000);
+tickElapsed();
 
-// ── 정보 카드 크기: 1440×900 기준으로 화면에 맞춰 확대·축소 (style.css의 zoom: var(--ui)) ──
-const fitUi = () => document.documentElement.style.setProperty("--ui",
-  Math.min(1.5, Math.max(0.65, Math.min(innerWidth / 1440, innerHeight / 900))));
-addEventListener("resize", fitUi);
-fitUi();
-
-// ── 3D: 패널이 뜬 뒤에 불러온다 ──
 import("./twin3d.js")
   .then(async ({ startTwin }) => {
-    twin3d = await startTwin($("stage"));
+    twin3d = await startTwin($("stage"),{onPresentation:renderSceneStatus});
     draw(null);
     $("loading").classList.add("done");
+    $("loading").hidden = true;
+    document.querySelectorAll(".views button, #labelToggle").forEach((b) => { b.disabled = false; });
   })
   .catch((e) => {
-    $("loading").textContent = `3D 모델을 불러오지 못했습니다: ${e.message}`;
+    $("loading").classList.add("error");
+    $("loading").textContent = "3D를 불러오지 못했습니다. 페이지를 새로고침해 다시 시도하세요. 상태 패널은 계속 사용할 수 있습니다.";
     console.error(e);
   });
 
-// ── 모의 시나리오 재생 (서버가 MT_SOURCE=mock일 때만 API가 있음) ──
-(async () => {
-  const r = await fetch("/api/mock/scenarios");
-  if (!r.ok) return;
-  $("demoScenario").innerHTML = (await r.json()).map((n) => `<option${n === "normal" ? " selected" : ""}>${n}</option>`).join("");
-  $("demo").hidden = false;
-  $("demoPlay").addEventListener("click", () => fetch("/api/mock/play", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ scenario: $("demoScenario").value, speed: +$("demoSpeed").value }),
-  }));
-})();
+$("labelToggle").addEventListener("click", () => {
+  const hidden = document.body.classList.toggle("labels-hidden");
+  $("labelToggle").setAttribute("aria-pressed", String(!hidden));
+});
 
-window.twin = { get snapshot() { return snapshot; }, get twin3d() { return twin3d; } }; // 콘솔 디버깅용
+initPlayback();
+window.twin = { get snapshot() { return snapshot; }, get twin3d() { return twin3d; } };

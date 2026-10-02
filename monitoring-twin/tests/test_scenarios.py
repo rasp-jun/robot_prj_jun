@@ -83,7 +83,7 @@ def test_normal():
     assert d["alarm_history"] == []
     run_ = d["last_run"]
     assert (run_["run_no"], run_["ng"], run_["reason"]) == (1, False, None)
-    assert run_["times"] == {"ST1": 7.0, "ST2": 11.0, "ST3": 4.0}
+    assert run_["times"] == {"ST1": 28.0, "ST2": 20.0, "ST3": 4.0}
     assert run_["started_at"] < run_["result_at"] < run_["finished_at"]
     # 중간: 팔레트가 CV1~CV5를 차례로 지나고, 단계가 HULL → POWERPACK → TURRET로 쌓임
     cvs = [f["pallets"][0]["cv"] for f in frames if f["pallets"]]

@@ -3,79 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>모니터링 트윈</title>
-<meta name="description" content="전차 모형 조립·검사 라인의 상태를 3D 트윈으로 보여 주는 모니터링 화면">
+<title>라인 모니터 · 모니터링 트윈</title>
+<meta name="description" content="전차 모형 조립·검사 라인의 실시간 3D 모니터링">
 <link rel="icon" href="data:,">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./dashboard.css">
 <script type="importmap">
-{ "imports": {
-  "three": "./vendor/three/build/three.module.js",
-  "three/addons/": "./vendor/three/examples/jsm/",
-  "three/examples/jsm/": "./vendor/three/examples/jsm/",
-  "urdf-loader": "./vendor/urdf-loader/URDFLoader.js"
-} }
+{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/","three/examples/jsm/":"./vendor/three/examples/jsm/","urdf-loader":"./vendor/urdf-loader/URDFLoader.js"}}
 </script>
 </head>
-<body>
-<div id="stage" aria-label="라인 3D 트윈"></div>
-<div class="loading" id="loading">3D 모델 불러오는 중…</div>
-
+<body class="twin-page">
 <header class="topbar">
-  <div class="brand">
-    <span class="eyebrow">전차 모형 조립·검사 라인</span>
-    <span class="brand-name">모니터링 트윈</span>
-  </div>
-  <nav class="nav" aria-label="페이지">
-    <a href="./" aria-current="page">트윈</a>
-    <a href="stats.html">통계</a>
-    <a href="records.html">기록</a>
-  </nav>
-  <div class="links" id="links" aria-label="연결 상태"></div>
-  <time class="clock" id="clock">--:--:--</time>
+  <a class="brand" href="./" aria-label="모니터링 트윈 홈"><span class="brand-symbol" aria-hidden="true">◈</span><span><span class="brand-name">LINE / TWIN</span><span class="eyebrow">조립·검사 모니터링</span></span></a>
+  <nav class="nav" aria-label="페이지"><a href="./" aria-current="page">라인 모니터</a><a href="stats.html">생산 통계</a><a href="records.html">가동 기록</a></nav>
+  <span class="source-tag" id="sourceTag">연결 확인 중</span><time class="clock" id="clock">--:--:--</time>
 </header>
-
-<div class="banner" id="banner" role="status" hidden></div>
-
-<section class="card headline">
-  <h1 id="headline">연결 중…</h1>
-  <div class="row">
-    <span class="pill" id="linePill" data-tone="muted">–</span>
-    <span class="muted" id="lineNote"></span>
+<main class="dashboard">
+  <section class="overview" aria-label="라인 상태">
+    <div><div class="section-kicker">ASSEMBLY LINE / 01</div><h1>라인 모니터 <span class="pill" id="linePill" data-tone="muted">연결 중</span></h1><p id="headline">현재 라인 상태를 불러오고 있습니다</p></div>
+    <div class="connection-block"><div class="links" id="links" aria-label="연결 상태"></div><span class="small muted" id="syncNote">서버 연결 대기</span></div>
+  </section>
+  <div class="banner" id="banner" role="status" hidden></div>
+  <section class="summary" aria-label="라인 요약">
+    <div class="stat"><span class="stat-index">01 / PASS</span><span class="muted">합격 트레이</span><div><b id="trayPass">–</b><small>대</small></div></div>
+    <div class="stat"><span class="stat-index">02 / FAIL</span><span class="muted">불합격 트레이</span><div><b id="trayFail">–</b><small>대</small></div></div>
+    <div class="stat"><span class="stat-index">03 / STORAGE</span><span class="muted">팔레트 보관창고</span><div><b id="storage">– / 3</b><small>칸</small></div></div>
+    <div class="stat last"><span class="stat-index">04 / LAST RUN</span><span class="muted">마지막 가동</span><b id="lastRun">–</b><span class="muted small" id="lastRunNote">완료된 가동 대기</span></div>
+  </section>
+  <div class="workspace">
+    <section class="scene-panel" aria-label="3D 디지털 트윈">
+      <div class="panel-head"><div><span class="section-kicker">DIGITAL TWIN</span><h2>조립 라인 뷰</h2></div><div class="scene-actions"><span class="small muted">Indy7 × 3 / Conveyor × 5</span><button id="focusToggle" type="button" aria-pressed="false">집중 모드 ↗</button></div></div>
+      <div class="scene-viewport">
+        <div id="stage" aria-label="마우스로 회전하고 휠로 확대할 수 있는 라인 3D 트윈"></div>
+        <div class="loading" id="loading" role="status"><span class="loader-mark" aria-hidden="true">◈</span><b>라인을 준비하고 있습니다</b><span>3D 모델과 로봇을 불러오는 중…</span></div>
+        <div class="scene-caption"><span class="scene-dot"></span><span id="viewName">정면 시점</span></div>
+        <div class="scene-legend"><span><i class="ready"></i>대기</span><span><i class="busy"></i>작업</span><span><i class="done"></i>완료</span><span><i class="err"></i>오류</span></div>
+        <div class="motion-hud"><div><span id="motionActor">ST1 · 대기</span><span id="motionPercent">—</span></div><strong id="motionPhase">다음 작업을 기다립니다</strong><progress id="motionMeter" max="100" value="0" aria-label="현재 3D 동작 진행률"></progress></div>
+        <span class="fps" id="fps" aria-hidden="true"></span>
+      </div>
+      <div class="scene-toolbar"><div class="views" role="group" aria-label="시점"><button type="button" data-view="front" aria-pressed="true" disabled>정면</button><button type="button" data-view="top" aria-pressed="false" disabled>탑 뷰</button><button type="button" data-view="free" aria-pressed="false" disabled>입체</button></div><span class="orbit-hint">드래그 회전 · 휠 확대</span><button class="label-toggle" id="followToggle" type="button" aria-pressed="false">작업 따라가기</button><button class="label-toggle" id="pathToggle" type="button" aria-pressed="false">작업 경로</button><button class="label-toggle" id="labelToggle" type="button" aria-pressed="true" disabled>라벨 표시</button></div>
+      <div class="motion-safety"><div><span class="section-kicker">MOTION GUARD</span><strong id="safetyStatus" role="status">모델 경로 검사 준비 중</strong></div><span class="safety-margin">여유 12 mm</span><p id="safetyDetail">설비 형상 · 로봇 간섭 · 관절 범위 검사</p></div>
+      <div class="process-heading"><h2>공정 흐름</h2><span class="small muted" id="lineNote">이벤트 수신 대기</span></div>
+      <div class="process-flow" id="processFlow" aria-label="컨베이어 구간 상태"></div>
+    </section>
+    <aside class="side-panel">
+      <section class="robot-panel"><div class="panel-head"><div><span class="section-kicker">STATIONS</span><h2>로봇 상태</h2></div><span class="small muted">3 UNITS</span></div><div class="robots" id="robots" aria-label="로봇 상태"><p class="muted empty">로봇 상태 수신 대기</p></div></section>
+      <section class="inspector-panel" aria-label="선택한 로봇의 모의 관절 자세"><div class="inspector-head"><div><span class="section-kicker">JOINT MONITOR</span><h2 id="inspectorName">ST1 · 로봇1</h2></div><span id="inspectorState">대기</span></div><div id="jointReadout" class="joint-grid"></div><p>화면의 모의 관절각 · ST 버튼으로 로봇 선택</p></section>
+      <section class="alarms" aria-label="알람"><div class="row between"><h2>이벤트 & 알람</h2><span id="alarmCount" class="small">수신 대기</span></div><ul id="alarmList" class="alarm-list"><li class="empty">서버 연결을 확인하고 있습니다</li></ul><a class="history-link" href="records.html">전체 기록 보기 <span aria-hidden="true">↗</span></a></section>
+    </aside>
   </div>
-</section>
-
-<aside class="robots" id="robots" aria-label="로봇 상태"></aside>
-
-<div class="views" role="group" aria-label="시점">
-  <button type="button" data-view="front" aria-pressed="true">정면</button>
-  <button type="button" data-view="top" aria-pressed="false">위</button>
-  <button type="button" data-view="free" aria-pressed="false">자유</button>
-</div>
-
-<section class="card summary" aria-label="라인 요약">
-  <div class="stat"><span class="muted">합격 트레이</span><b id="trayPass">0</b></div>
-  <div class="stat"><span class="muted">불합격 트레이</span><b id="trayFail">0</b></div>
-  <div class="stat"><span class="muted">보관창고</span><b id="storage">0 / 3</b></div>
-  <div class="stat last"><span class="muted">마지막 가동</span><b id="lastRun">–</b><span class="muted small" id="lastRunNote"></span></div>
-</section>
-
-<section class="card alarms" aria-label="알람">
-  <div class="row between"><span class="muted">알람</span><span id="alarmCount" class="small">활성 없음</span></div>
-  <ul id="alarmList" class="alarm-list"></ul>
-</section>
-
-<section class="card demo" id="demo" hidden aria-label="모의 시나리오 재생">
-  <label for="demoScenario" class="muted small">모의 시나리오</label>
-  <select id="demoScenario"></select>
-  <label for="demoSpeed" class="muted small">배속</label>
-  <select id="demoSpeed"><option>1</option><option selected>2</option><option>5</option><option>10</option></select>
-  <button type="button" id="demoPlay">재생</button>
-</section>
-
-<div class="fps" id="fps" aria-hidden="true"></div>
-
+  <section class="demo" id="demo" hidden aria-label="모의 시나리오 재생">
+    <div class="demo-intro"><span class="demo-icon" aria-hidden="true">▶</span><div><b>시뮬레이션 플레이어</b><span class="small muted">작업별 모의 동작 · 공정 흐름 시연</span></div></div>
+    <div class="demo-controls">
+      <label for="demoScenario">시나리오</label><select id="demoScenario"></select>
+      <label for="demoSpeed">속도</label><select id="demoSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select>
+      <label class="loop-control"><input type="checkbox" id="demoLoop"> 반복</label>
+      <button type="button" id="demoPause" class="secondary" disabled>일시정지</button>
+      <button type="button" id="demoPlay">처음부터 재생 ↗</button>
+    </div>
+    <div class="playback-timeline"><span id="playbackState">재생 대기</span><progress id="demoProgress" max="100" value="0" aria-label="시나리오 진행률"></progress><span id="playbackTime">0:00 / 0:00</span></div>
+    <span id="demoFeedback" class="small muted" role="status">속도와 반복 설정은 재생 중에도 변경할 수 있습니다.</span>
+  </section>
+  <footer class="dashboard-footer"><span>전차 모형 조립·검사 라인</span><span>ST1 파워팩 조립 <i>→</i> ST2 포탑·용접 <i>→</i> ST3 비전·분류</span><span><kbd>1</kbd> 정면 <kbd>2</kbd> 탑 뷰 <kbd>3</kbd> 입체 <kbd>F</kbd> 집중 <kbd>Space</kbd> 재생</span></footer>
+</main>
 <script type="module" src="./main.js"></script>
 </body>
 </html>

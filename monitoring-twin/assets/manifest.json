@@ -7,13 +7,40 @@
   },
   "tank": {
     "glb": null,
-    "hull": {"size": [0.20, 0.05, 0.12], "color": "#5b6648"},
-    "powerpack": {"size": [0.06, 0.035, 0.09], "offset_x": -0.065, "color": "#3d4436"},
-    "turret": {"radius": 0.045, "height": 0.035, "barrel": 0.11, "color": "#6b7a55"},
+    "hull": {
+      "size": [
+        0.2,
+        0.05,
+        0.12
+      ],
+      "color": "#5b6648"
+    },
+    "powerpack": {
+      "size": [
+        0.06,
+        0.035,
+        0.09
+      ],
+      "offset_x": -0.065,
+      "color": "#3d4436"
+    },
+    "turret": {
+      "radius": 0.045,
+      "height": 0.035,
+      "barrel": 0.11,
+      "color": "#6b7a55"
+    },
     "ng_color": "#c9372c"
   },
   "motion": {
     "pallet_move_s": 1.4,
-    "storage_move_s": 1.2
+    "storage_move_s": 1.2,
+    "sort_move_s": 0.8,
+    "assembly_settle_s": 0.5,
+    "clearance_m": 0.012,
+    "joint_limits": {
+      "velocity": 75,
+      "acceleration": 180
+    }
   }
 }

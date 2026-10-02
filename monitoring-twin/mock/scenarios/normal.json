@@ -48,7 +48,7 @@
    }
   },
   {
-   "after_ms": 3000,
+   "after_ms": 14000,
    "event": {
     "type": "robot",
     "robot": 1,
@@ -74,7 +74,7 @@
    }
   },
   {
-   "after_ms": 4000,
+   "after_ms": 14000,
    "event": {
     "type": "robot",
     "robot": 1,
@@ -164,7 +164,7 @@
    }
   },
   {
-   "after_ms": 5000,
+   "after_ms": 14000,
    "event": {
     "type": "robot",
     "robot": 2,

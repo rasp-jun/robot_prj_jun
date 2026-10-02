@@ -1,5 +1,8 @@
 // 상단 연결 상태, 상황 카드, 로봇 카드, 라인 요약 (W0-4)
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const CV_NAMES = ["파워팩 조립", "버퍼", "포탑·용접", "비전·분류", "팔레트 회수"];
+const CV_STATES = { EMPTY: "비어 있음", ARRIVING: "진입 중", HOLD: "정위치", DEPARTING: "이송 중" };
 
 const TASK = {
   ROBOT1_HULL_PLACE: "하부 차체를 팔레트에 올리는 중",
@@ -19,12 +22,14 @@ const hhmmss = (iso) => (iso ? clock(new Date(iso)) : "");
 
 // 로봇이 BUSY가 된 시각 (경과 시간 표시용, 브라우저 시계 기준)
 const busySince = {};
+let demoClock = null;
 
-export function renderStatus(s, { online }) {
+export function renderStatus(s, { online, playback = null }) {
+  demoClock = playback;
   const stale = !online || !s.link.gateway;
 
   // 연결 상태
-  const links = [["게이트웨이", s.link.gateway && online], ["PLC", s.link.plc], ...s.link.robots.map((ok, i) => [`로봇${i + 1}`, ok])];
+  const links = [["게이트웨이", !stale], ["PLC", !stale && s.link.plc], ...s.link.robots.map((ok, i) => [`로봇${i + 1}`, !stale && ok])];
   $("links").innerHTML = links.map(([n, ok]) => `<span data-ok="${!!ok}"><i></i>${n}</span>`).join("");
 
   // 배너: 비상정지가 연결 끊김보다 먼저
@@ -42,13 +47,20 @@ export function renderStatus(s, { online }) {
     banner.hidden = true;
   }
   document.body.classList.toggle("stale", stale);
+  $("syncNote").textContent = stale ? "연결 복구 대기 · 마지막 수신 상태" : `마지막 동기화 ${hhmmss(s.updated_at)}`;
+  $("processFlow").innerHTML = s.conveyors.map(({ cv, state }) => {
+    const pallet = s.pallets.find((p) => p.cv === cv);
+    return `<div class="process-step" data-state="${esc(state)}" data-ng="${pallet?.ng === true}"><strong>CV${cv} →</strong><b>${CV_NAMES[cv - 1]}</b><span>${stale ? "확인 불가" : CV_STATES[state] ?? esc(state)}${pallet?.ng ? " · NG" : ""}</span></div>`;
+  }).join("");
 
   // 상황 카드
-  const [head, tone] = stale ? ["현장 상태를 확인할 수 없습니다", "muted"] : LINE[s.line.state];
+  const paused = playback?.state === "PAUSED";
+  const [head, tone] = stale ? ["현장 상태를 확인할 수 없습니다", "muted"]
+    : paused ? ["시뮬레이션을 일시정지했습니다", "warn"] : LINE[s.line.state];
   $("headline").textContent = head;
   const pill = $("linePill");
   pill.dataset.tone = tone;
-  pill.textContent = s.line.state;
+  pill.textContent = paused ? "DEMO PAUSED" : s.line.state;
   const runs = s.pallets.filter((p) => p.run_no != null).map((p) => `#${p.run_no}`);
   $("lineNote").textContent = `팔레트 ${s.pallets.length}개 라인 위${runs.length ? " · " + runs.join(", ") : ""}`;
 
@@ -61,10 +73,12 @@ export function renderStatus(s, { online }) {
       : r.state === "ERR" ? `오류 · ${r.job ?? "작업 코드 없음"}`
       : r.state === "DONE" ? (TASK[r.job] ? `${TASK[r.job].replace(" 중", "")} 완료` : "작업 완료")
       : "대기";
-    return `<div class="robot" data-state="${r.state}">
-      <div class="head"><span class="name">로봇${r.robot}<small>ST${r.robot}</small></span><span class="state">${r.state}</span></div>
-      <div class="task">${task}</div>
-      <div class="meta">${r.job ? `<span>${r.job}</span> ` : ""}<span data-elapsed="${r.robot}"></span></div>
+    const connected = !stale && s.link.robots[r.robot - 1];
+    return `<div class="robot" data-state="${r.state}" data-connected="${connected}">
+      <div class="head"><span class="name">로봇${r.robot}<button type="button" class="focus-station" data-focus-st="${r.robot}" aria-label="ST${r.robot} 작업 확대">ST${r.robot} ↗</button></span><span class="state">${r.state}</span></div>
+      <div class="task">${connected ? esc(task) : "연결 끊김 · 마지막 수신 상태"}</div>
+      <div class="motion-phase" data-motion-phase="${r.robot}"></div>
+      <div class="meta">${r.job ? `<span>${esc(r.job)}</span> ` : "작업 대기 "}<span data-elapsed="${connected ? r.robot : ""}"></span></div>
     </div>`;
   }).join("");
   tickElapsed();
@@ -84,7 +98,9 @@ export function tickElapsed() {
   const now = performance.now();
   for (const el of document.querySelectorAll("[data-elapsed]")) {
     const t0 = busySince[el.dataset.elapsed];
-    el.textContent = t0 ? `· ${((now - t0) / 1000).toFixed(0)} s` : "";
+    const hint = demoClock?.jobs?.[el.dataset.elapsed];
+    const seconds = hint ? Math.max(0, Math.min(hint.duration_s, demoClock.elapsed_s - hint.started_s)) : (now - t0) / 1000;
+    el.textContent = t0 != null ? `· ${seconds.toFixed(1)} s` : "";
   }
   $("clock").textContent = clock(new Date());
 }

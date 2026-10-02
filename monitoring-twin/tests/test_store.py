@@ -45,7 +45,7 @@ def test_runs_alarms_events_saved():
     runs = store.runs(*ALL)
     assert [(r["ng"], r["reason"]) for r in runs] == [(True, "ROBOT1_ERR"), (False, None)]  # 최신이 먼저
     ok = runs[1]
-    assert ok["times"] == {"ST1": 7.0, "ST2": 11.0, "ST3": 4.0}
+    assert ok["times"] == {"ST1": 28.0, "ST2": 20.0, "ST3": 4.0}
     assert ok["jobs"] == {"ROBOT1_HULL_PLACE": "DONE", "ROBOT1_POWERPACK_MOUNT": "DONE",
                           "ROBOT2_TURRET_MATE": "DONE", "ROBOT2_WELD_MOTION": "DONE", "ROBOT3_SORT": "DONE"}
     assert runs[0]["jobs"]["ROBOT1_POWERPACK_MOUNT"] == "ERR"
@@ -73,7 +73,7 @@ def test_stats_kpi():
     assert s["k1_robot1"] == {"value": 2 / 3 * 100, "done": 2, "tried": 3}
     assert s["k1_robot2"]["tried"] == 2 and s["k6_weld"]["value"] == 100.0  # 로봇1 오류 가동은 ST2 작업 생략
     assert round(s["k3_p95_s"], 3) == LATENCY
-    assert s["station_avg_s"]["ST2"] == 11.0 and s["bottleneck"] == "ST2"
+    assert s["station_avg_s"]["ST2"] == 20.0 and s["bottleneck"] == "ST2"
     assert s["cycle_samples"] == 3 and s["cycle_s"] > s["station_avg_s"]["ST2"]  # 시작→분류 전체 시간
     assert s["reasons"] == [("ROBOT1_ERR", 1)]
     assert s["speed_unit"] == "대/h" and s["speed"] > 0
